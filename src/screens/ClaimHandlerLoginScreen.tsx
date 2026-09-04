@@ -102,7 +102,7 @@ const ClaimHandlerLoginScreen = ({
         password,
       });
       setSession(session);
-      navigation.replace('ClaimHandlerHome', {user: session.user});
+      navigation.replace('ClaimPortals', {user: session.user});
     } catch (error) {
       setErrorMessage(
         error instanceof Error

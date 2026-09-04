@@ -6,6 +6,7 @@ export type RootStackParamList = {
   PortalSelect: undefined;
   ClaimHandlerLogin: undefined;
   ClaimHandlerHome: {user: ClaimHandlerUser};
+  ClaimPortals: {user: ClaimHandlerUser};
 };
 
 export type SplashScreenProps = NativeStackScreenProps<
@@ -26,4 +27,9 @@ export type ClaimHandlerLoginScreenProps = NativeStackScreenProps<
 export type ClaimHandlerHomeScreenProps = NativeStackScreenProps<
   RootStackParamList,
   'ClaimHandlerHome'
+>;
+
+export type ClaimPortalsScreenProps = NativeStackScreenProps<
+  RootStackParamList,
+  'ClaimPortals'
 >;
