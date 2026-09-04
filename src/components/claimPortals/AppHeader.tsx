@@ -2,8 +2,7 @@ import React from 'react';
 import {Image, Pressable, StyleSheet, Text, View} from 'react-native';
 import type {ClaimPortalTheme} from '../../theme/claimPortals';
 import {getInitials} from '../../theme/claimPortals';
-import {AppIcon} from './AppIcon';
-import {MenuIcon, MoonIcon, SunIcon} from './ClaimPortalsIcons';
+import {MenuIcon, MoonIcon, QuestionIcon, SunIcon} from './ClaimPortalsIcons';
 
 const wordmark = require('../../../assets/arcintelliq-logo.png');
 
@@ -12,6 +11,7 @@ type AppHeaderProps = {
   userName: string;
   onMenuPress: () => void;
   onThemePress: () => void;
+  onFaqsPress: () => void;
   onProfilePress: () => void;
 };
 
@@ -20,6 +20,7 @@ export function AppHeader({
   userName,
   onMenuPress,
   onThemePress,
+  onFaqsPress,
   onProfilePress,
 }: AppHeaderProps) {
   return (
@@ -38,7 +39,6 @@ export function AppHeader({
       </Pressable>
 
       <View style={styles.brand}>
-        <AppIcon size={28} />
         <Image
           source={wordmark}
           style={[
@@ -59,14 +59,28 @@ export function AppHeader({
           hitSlop={8}
           style={({pressed}) => [
             styles.iconButton,
+            styles.compactButton,
             {backgroundColor: theme.card, borderColor: theme.border},
             pressed && {opacity: 0.8},
           ]}>
           {theme.scheme === 'dark' ? (
-            <SunIcon color={theme.gold} />
+            <SunIcon color={theme.gold} size={13} />
           ) : (
-            <MoonIcon color={theme.text} cutColor={theme.card} />
+            <MoonIcon color={theme.text} cutColor={theme.card} size={13} />
           )}
+        </Pressable>
+        <Pressable
+          onPress={onFaqsPress}
+          accessibilityRole="button"
+          accessibilityLabel="Open FAQs"
+          hitSlop={8}
+          style={({pressed}) => [
+            styles.iconButton,
+            styles.compactButton,
+            {backgroundColor: theme.card, borderColor: theme.border},
+            pressed && {opacity: 0.8},
+          ]}>
+          <QuestionIcon color={theme.text} size={13} />
         </Pressable>
         <Pressable
           onPress={onProfilePress}
@@ -95,12 +109,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  compactButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 9,
+  },
   brand: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
     paddingHorizontal: 8,
   },
   wordmark: {

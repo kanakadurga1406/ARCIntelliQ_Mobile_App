@@ -1,10 +1,6 @@
 import React from 'react';
 import {Pressable, StyleSheet, Text, TextInput, View} from 'react-native';
-import type {
-  PortalSortOption,
-  PortalStats,
-  PortalStatusFilter,
-} from '../../types/claimPortals';
+import type {SortOption, StatusChip} from '../../types/claimPortals';
 import type {ClaimPortalTheme} from '../../theme/claimPortals';
 import {FilterIcon, SearchIcon} from './ClaimPortalsIcons';
 
@@ -12,52 +8,36 @@ type PortalListControlsProps = {
   theme: ClaimPortalTheme;
   query: string;
   onQueryChange: (value: string) => void;
-  activeStatus: PortalStatusFilter;
-  onStatusChange: (status: PortalStatusFilter) => void;
-  stats: PortalStats;
+  chips: StatusChip[];
+  activeStatus: string;
+  onStatusChange: (status: string) => void;
   filterCount: number;
-  sortBy: PortalSortOption;
+  sortOptions: SortOption[];
+  sortBy: string;
   onSortPress: () => void;
   onFilterPress: () => void;
   resultCount: number;
   searchFocusToken?: number;
 };
 
-const STATUS_CHIPS: {
-  id: PortalStatusFilter;
-  label: string;
-  countKey: keyof Pick<
-    PortalStats,
-    'total' | 'active' | 'inactive' | 'newThisMonth'
-  >;
-}[] = [
-  {id: 'all', label: 'All', countKey: 'total'},
-  {id: 'active', label: 'Active', countKey: 'active'},
-  {id: 'inactive', label: 'Inactive', countKey: 'inactive'},
-  {id: 'new', label: 'New', countKey: 'newThisMonth'},
-];
-
-const SORT_LABELS: Record<PortalSortOption, string> = {
-  latest: 'Latest',
-  oldest: 'Oldest',
-  'name-asc': 'Name A-Z',
-  'name-desc': 'Name Z-A',
-};
-
 export function PortalListControls({
   theme,
   query,
   onQueryChange,
+  chips,
   activeStatus,
   onStatusChange,
-  stats,
   filterCount,
+  sortOptions,
   sortBy,
   onSortPress,
   onFilterPress,
   resultCount,
   searchFocusToken = 0,
 }: PortalListControlsProps) {
+  const sortLabel =
+    sortOptions.find(option => option.id === sortBy)?.label || 'Latest';
+
   return (
     <View>
       <View style={styles.searchRow}>
@@ -98,8 +78,10 @@ export function PortalListControls({
       </View>
 
       <View style={styles.chips}>
-        {STATUS_CHIPS.map(chip => {
+        {chips.map(chip => {
           const selected = chip.id === activeStatus;
+          const countLabel =
+            typeof chip.count === 'number' ? ` (${chip.count})` : '';
           return (
             <Pressable
               key={chip.id}
@@ -117,7 +99,8 @@ export function PortalListControls({
                   styles.chipText,
                   {color: selected ? theme.onPrimary : theme.chipText},
                 ]}>
-                {chip.label} ({stats[chip.countKey]})
+                {chip.label}
+                {countLabel}
               </Text>
             </Pressable>
           );
@@ -128,14 +111,16 @@ export function PortalListControls({
         <Text style={[styles.count, {color: theme.textSecondary}]}>
           {resultCount} portals
         </Text>
-        <Pressable
-          onPress={onSortPress}
-          accessibilityRole="button"
-          accessibilityLabel="Change sort order">
-          <Text style={[styles.sort, {color: theme.primary}]}>
-            Sort by: {SORT_LABELS[sortBy]}
-          </Text>
-        </Pressable>
+        {sortOptions.length > 0 ? (
+          <Pressable
+            onPress={onSortPress}
+            accessibilityRole="button"
+            accessibilityLabel="Change sort order">
+            <Text style={[styles.sort, {color: theme.primary}]}>
+              Sort by: {sortLabel}
+            </Text>
+          </Pressable>
+        ) : null}
       </View>
     </View>
   );

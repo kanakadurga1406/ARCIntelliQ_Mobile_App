@@ -10,8 +10,10 @@ import {
 } from 'react-native';
 import type {ClaimHandlerUser} from '../../types/auth';
 import type {
-  BusinessRequestSummary,
-  PortalStats,
+  ClaimPortalsDashboard,
+  PageAction,
+  ProfileField,
+  StatCard,
 } from '../../types/claimPortals';
 import type {ClaimPortalTheme} from '../../theme/claimPortals';
 import {getInitials} from '../../theme/claimPortals';
@@ -20,27 +22,31 @@ import {KpiGrid} from './KpiGrid';
 type HomeTabProps = {
   theme: ClaimPortalTheme;
   user: ClaimHandlerUser;
-  stats: PortalStats | null;
+  subtitle: string;
+  actions: PageAction[];
+  statCards: StatCard[] | null;
   isLoading: boolean;
   isRefreshing: boolean;
   errorMessage: string;
   onRefresh: () => void;
   onRetry: () => void;
-  onOpenPortals: () => void;
-  onBusinessRequestsPress: () => void;
+  onAction: (destination: string) => void;
+  onStatPress: (card: StatCard) => void;
 };
 
 export function HomeTabBody({
   theme,
   user,
-  stats,
+  subtitle,
+  actions,
+  statCards,
   isLoading,
   isRefreshing,
   errorMessage,
   onRefresh,
   onRetry,
-  onOpenPortals,
-  onBusinessRequestsPress,
+  onAction,
+  onStatPress,
 }: HomeTabProps) {
   const firstName = user.name.split(' ')[0] || 'Handler';
 
@@ -56,15 +62,16 @@ export function HomeTabBody({
           tintColor={theme.primary}
         />
       }>
-      <Text style={[styles.kicker, {color: theme.primary}]}>Home</Text>
       <Text style={[styles.title, {color: theme.text}]}>
         Welcome, {firstName}
       </Text>
-      <Text style={[styles.subtitle, {color: theme.textSecondary}]}>
-        A live snapshot of your claim workspace.
-      </Text>
+      {subtitle ? (
+        <Text style={[styles.subtitle, {color: theme.textSecondary}]}>
+          {subtitle}
+        </Text>
+      ) : null}
 
-      {isLoading && !stats ? (
+      {isLoading && !statCards ? (
         <View style={styles.loadingBlock}>
           <ActivityIndicator color={theme.primary} />
           <Text style={[styles.helper, {color: theme.textSecondary}]}>
@@ -73,7 +80,7 @@ export function HomeTabBody({
         </View>
       ) : null}
 
-      {errorMessage && !stats ? (
+      {errorMessage && !statCards ? (
         <View style={styles.loadingBlock}>
           <Text style={[styles.helper, {color: theme.danger}]}>
             {errorMessage}
@@ -88,60 +95,41 @@ export function HomeTabBody({
         </View>
       ) : null}
 
-      {stats ? (
+      {statCards ? (
         <View style={styles.kpiWrap}>
-          <KpiGrid
-            theme={theme}
-            stats={stats}
-            onBusinessRequestsPress={onBusinessRequestsPress}
-          />
+          <KpiGrid theme={theme} cards={statCards} onCardPress={onStatPress} />
         </View>
       ) : null}
 
-      <Pressable
-        onPress={onOpenPortals}
-        style={[styles.button, {backgroundColor: theme.primary}]}>
-        <Text style={[styles.buttonText, {color: theme.onPrimary}]}>
-          Open Claim Portals
-        </Text>
-      </Pressable>
+      {actions.map(action => (
+        <Pressable
+          key={action.id}
+          onPress={() => onAction(action.destination)}
+          style={[styles.button, {backgroundColor: theme.primary}]}>
+          <Text style={[styles.buttonText, {color: theme.onPrimary}]}>
+            {action.label}
+          </Text>
+        </Pressable>
+      ))}
     </ScrollView>
   );
 }
 
 type DashboardTabProps = {
   theme: ClaimPortalTheme;
-  stats: PortalStats | null;
-  summary: BusinessRequestSummary | null;
+  dashboard: ClaimPortalsDashboard['dashboard'] | null;
   isRefreshing: boolean;
   onRefresh: () => void;
-  onOpenPortals: () => void;
-  onOpenRequests: () => void;
+  onAction: (destination: string) => void;
 };
 
 export function DashboardTabBody({
   theme,
-  stats,
-  summary,
+  dashboard,
   isRefreshing,
   onRefresh,
-  onOpenPortals,
-  onOpenRequests,
+  onAction,
 }: DashboardTabProps) {
-  const requestRows = [
-    {label: 'Total requests', value: summary?.total},
-    {label: 'Pending', value: summary?.pending},
-    {label: 'Approved', value: summary?.approved},
-    {label: 'Rejected', value: summary?.rejected},
-  ];
-
-  const portalRows = [
-    {label: 'Total portals', value: stats?.total},
-    {label: 'Active', value: stats?.active},
-    {label: 'Inactive', value: stats?.inactive},
-    {label: 'New this month', value: stats?.newThisMonth},
-  ];
-
   return (
     <ScrollView
       style={styles.scroll}
@@ -154,65 +142,49 @@ export function DashboardTabBody({
           tintColor={theme.primary}
         />
       }>
-      <Text style={[styles.kicker, {color: theme.primary}]}>Dashboard</Text>
-      <Text style={[styles.title, {color: theme.text}]}>Workspace overview</Text>
-      <Text style={[styles.subtitle, {color: theme.textSecondary}]}>
-        Track request volume and portal health without leaving this screen.
+      <Text style={[styles.title, {color: theme.text}]}>
+        {dashboard?.title || 'Workspace overview'}
       </Text>
-
-      <View
-        style={[
-          styles.card,
-          {backgroundColor: theme.card, borderColor: theme.border},
-        ]}>
-        <Text style={[styles.cardLabel, {color: theme.textMuted}]}>
-          BUSINESS REQUESTS
+      {dashboard?.subtitle ? (
+        <Text style={[styles.subtitle, {color: theme.textSecondary}]}>
+          {dashboard.subtitle}
         </Text>
-        {requestRows.map(row => (
-          <View key={row.label} style={styles.statRow}>
-            <Text style={[styles.statLabel, {color: theme.textSecondary}]}>
-              {row.label}
-            </Text>
-            <Text style={[styles.statValue, {color: theme.text}]}>
-              {row.value ?? '—'}
-            </Text>
-          </View>
-        ))}
-        <Pressable
-          onPress={onOpenRequests}
-          style={[styles.linkButton, {borderColor: theme.border}]}>
-          <Text style={[styles.linkText, {color: theme.primary}]}>
-            View request details
-          </Text>
-        </Pressable>
-      </View>
+      ) : null}
 
-      <View
-        style={[
-          styles.card,
-          {backgroundColor: theme.card, borderColor: theme.border},
-        ]}>
-        <Text style={[styles.cardLabel, {color: theme.textMuted}]}>
-          PORTAL HEALTH
-        </Text>
-        {portalRows.map(row => (
-          <View key={row.label} style={styles.statRow}>
-            <Text style={[styles.statLabel, {color: theme.textSecondary}]}>
-              {row.label}
-            </Text>
-            <Text style={[styles.statValue, {color: theme.text}]}>
-              {row.value ?? '—'}
-            </Text>
-          </View>
-        ))}
-        <Pressable
-          onPress={onOpenPortals}
-          style={[styles.button, {backgroundColor: theme.primary, marginTop: 8}]}>
-          <Text style={[styles.buttonText, {color: theme.onPrimary}]}>
-            Manage Claim Portals
+      {(dashboard?.sections ?? []).map(section => (
+        <View
+          key={section.id}
+          style={[
+            styles.card,
+            {backgroundColor: theme.card, borderColor: theme.border},
+          ]}>
+          <Text style={[styles.cardLabel, {color: theme.textMuted}]}>
+            {section.title}
           </Text>
-        </Pressable>
-      </View>
+          {section.rows.map(row => (
+            <View key={row.id} style={styles.statRow}>
+              <Text style={[styles.statLabel, {color: theme.textSecondary}]}>
+                {row.label}
+              </Text>
+              <Text style={[styles.statValue, {color: theme.text}]}>
+                {row.value}
+              </Text>
+            </View>
+          ))}
+          {section.action ? (
+            <Pressable
+              onPress={() => onAction(section.action!.destination)}
+              style={[
+                styles.button,
+                {backgroundColor: theme.primary, marginTop: 8},
+              ]}>
+              <Text style={[styles.buttonText, {color: theme.onPrimary}]}>
+                {section.action.label}
+              </Text>
+            </Pressable>
+          ) : null}
+        </View>
+      ))}
     </ScrollView>
   );
 }
@@ -220,13 +192,18 @@ export function DashboardTabBody({
 type ProfileTabProps = {
   theme: ClaimPortalTheme;
   user: ClaimHandlerUser;
+  extraFields: ProfileField[];
   onSignOut: () => void;
 };
 
-export function ProfileTabBody({theme, user, onSignOut}: ProfileTabProps) {
+export function ProfileTabBody({
+  theme,
+  user,
+  extraFields,
+  onSignOut,
+}: ProfileTabProps) {
   return (
     <View style={styles.page}>
-      <Text style={[styles.kicker, {color: theme.primary}]}>Profile</Text>
       <View
         style={[
           styles.card,
@@ -243,6 +220,18 @@ export function ProfileTabBody({theme, user, onSignOut}: ProfileTabProps) {
           {user.title}
         </Text>
         <Text style={[styles.email, {color: theme.textMuted}]}>{user.email}</Text>
+        {extraFields.map(field => (
+          <View key={field.id} style={styles.profileField}>
+            {field.label ? (
+              <Text style={[styles.fieldLabel, {color: theme.textMuted}]}>
+                {field.label}
+              </Text>
+            ) : null}
+            <Text style={[styles.fieldValue, {color: theme.text}]}>
+              {field.value}
+            </Text>
+          </View>
+        ))}
         <Pressable
           onPress={onSignOut}
           style={[styles.button, {backgroundColor: theme.primary, marginTop: 20}]}>
@@ -263,11 +252,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 8,
     paddingBottom: 28,
-  },
-  kicker: {
-    fontSize: 13,
-    fontWeight: '700',
-    marginBottom: 6,
   },
   title: {
     fontSize: 26,
@@ -318,18 +302,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
   },
-  linkButton: {
-    marginTop: 8,
-    minHeight: 42,
-    borderRadius: 12,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  linkText: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
   statRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -359,5 +331,19 @@ const styles = StyleSheet.create({
   email: {
     marginTop: 4,
     fontSize: 13,
+  },
+  profileField: {
+    marginTop: 12,
+    alignItems: 'center',
+  },
+  fieldLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  fieldValue: {
+    marginTop: 2,
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

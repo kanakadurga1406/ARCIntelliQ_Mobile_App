@@ -1,60 +1,148 @@
-export type PortalStatus = 'active' | 'inactive';
+export type UiTone =
+  | 'primary'
+  | 'success'
+  | 'warning'
+  | 'danger'
+  | 'purple'
+  | 'gold'
+  | 'orange';
 
-export type PortalSortOption = 'latest' | 'oldest' | 'name-asc' | 'name-desc';
+export type NavItem = {
+  id: string;
+  label: string;
+  icon: string;
+  destination: string;
+  badge?: number;
+  style?: 'default' | 'fab';
+};
 
-export type PortalStatusFilter = 'all' | 'active' | 'inactive' | 'new';
+export type PageAction = {
+  id: string;
+  label: string;
+  destination: string;
+};
+
+export type StatCard = {
+  id: string;
+  title: string;
+  value: number | string;
+  trend?: number;
+  icon: string;
+  tone?: UiTone;
+  destination?: string;
+};
+
+export type DashboardRow = {
+  id: string;
+  label: string;
+  value: number | string;
+};
+
+export type DashboardSection = {
+  id: string;
+  title: string;
+  rows: DashboardRow[];
+  action?: PageAction;
+};
+
+export type StatusChip = {
+  id: string;
+  label: string;
+  count?: number;
+  filter?: {
+    field: 'status' | 'flag';
+    value: string;
+  };
+};
+
+export type SortOption = {
+  id: string;
+  label: string;
+  field: string;
+  direction: 'asc' | 'desc';
+};
+
+export type PortalMetaField = {
+  id: string;
+  label: string;
+  value: string;
+};
+
+export type PortalMetric = {
+  id: string;
+  value: number | string;
+  icon: string;
+};
 
 export type ClaimPortal = {
   id: string;
   name: string;
-  businessId: string;
-  status: PortalStatus;
+  status: string;
   createdAt: string;
-  linkedBusinesses: number;
-  documents: number;
-  assignedUsers: number;
-  isNewThisMonth: boolean;
+  businessId: string;
+  flags?: string[];
+  meta: PortalMetaField[];
+  metrics: PortalMetric[];
+  values?: Record<string, string | number>;
 };
 
-export type TrendMap = {
-  total: number;
-  active: number;
-  inactive: number;
-  newThisMonth: number;
-  businessRequests: number;
+export type PortalAction = {
+  id: string;
+  label: string;
+  icon: string;
+  destination?: string;
+  tone?: UiTone;
 };
 
-export type PortalStats = {
-  total: number;
-  active: number;
-  inactive: number;
-  newThisMonth: number;
-  businessRequests: number;
-  trends: TrendMap;
+export type ProfileField = {
+  id: string;
+  label?: string;
+  value: string;
 };
 
-export type BusinessRequestSummary = {
-  total: number;
-  pending: number;
-  approved: number;
-  rejected: number;
+export type FaqItem = {
+  id: string;
+  question: string;
+  answer: string;
 };
 
-export type DrawerBadges = {
-  businessRequests: number;
-  contactRequests: number;
-};
-
-export type ClaimPortalsDashboard = {
-  portals: ClaimPortal[];
-  stats: PortalStats;
-  requestSummary: BusinessRequestSummary;
-  drawerBadges: DrawerBadges;
+export type SummaryRow = {
+  id: string;
+  label: string;
+  value: number | string;
+  icon?: string;
+  tone?: UiTone;
 };
 
 export type PortalFilters = {
-  status: PortalStatusFilter;
+  status: string;
   fromDate: string;
   toDate: string;
-  sortBy: PortalSortOption;
+  sortBy: string;
+};
+
+export type ClaimPortalsDashboard = {
+  statCards: StatCard[];
+  menuItems: NavItem[];
+  bottomTabs: NavItem[];
+  home: {
+    subtitle: string;
+    actions: PageAction[];
+  };
+  dashboard: {
+    title: string;
+    subtitle: string;
+    sections: DashboardSection[];
+  };
+  portalsPage: {
+    title: string;
+    subtitle: string;
+  };
+  statusChips: StatusChip[];
+  sortOptions: SortOption[];
+  portalActions: PortalAction[];
+  profileFields: ProfileField[];
+  faqs: FaqItem[];
+  requestSummary: SummaryRow[];
+  portals: ClaimPortal[];
 };

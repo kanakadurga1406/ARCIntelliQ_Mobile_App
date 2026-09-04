@@ -10,57 +10,30 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import type {ClaimHandlerUser} from '../../types/auth';
+import type {NavItem} from '../../types/claimPortals';
 import type {ClaimPortalTheme} from '../../theme/claimPortals';
 import {getInitials} from '../../theme/claimPortals';
 import {AppIcon} from './AppIcon';
-import {
-  CloseIcon,
-  DashboardTabIcon,
-  GridTabIcon,
-  LogoutMiniIcon,
-  PlusMiniIcon,
-  ProfileTabIcon,
-  SearchIcon,
-} from './ClaimPortalsIcons';
-
-export type DrawerDestination =
-  | 'portals'
-  | 'dashboard'
-  | 'add-claim'
-  | 'search'
-  | 'profile'
-  | 'sign-out';
-
-type DrawerItemConfig = {
-  id: string;
-  label: string;
-  destination: DrawerDestination;
-  Icon: React.ComponentType<{color?: string; size?: number}>;
-};
+import {CloseIcon, LogoutMiniIcon} from './ClaimPortalsIcons';
+import {UiIcon} from './UiIcon';
 
 type SideDrawerProps = {
   visible: boolean;
   theme: ClaimPortalTheme;
   user: ClaimHandlerUser;
-  activeDestination: DrawerDestination | null;
+  menuItems: NavItem[];
+  activeDestination: string | null;
   topInset: number;
   bottomInset: number;
   onClose: () => void;
-  onNavigate: (destination: DrawerDestination, label?: string) => void;
+  onNavigate: (destination: string, label?: string) => void;
 };
-
-const MENU_ITEMS: DrawerItemConfig[] = [
-  {id: 'claim-portals', label: 'Claim Portals', destination: 'portals', Icon: GridTabIcon},
-  {id: 'dashboard', label: 'Dashboard', destination: 'dashboard', Icon: DashboardTabIcon},
-  {id: 'add-claim', label: 'Add Claim', destination: 'add-claim', Icon: PlusMiniIcon},
-  {id: 'search', label: 'Search', destination: 'search', Icon: SearchIcon},
-  {id: 'profile', label: 'Profile', destination: 'profile', Icon: ProfileTabIcon},
-];
 
 export function SideDrawer({
   visible,
   theme,
   user,
+  menuItems,
   activeDestination,
   topInset,
   bottomInset,
@@ -143,14 +116,19 @@ export function SideDrawer({
           contentContainerStyle={styles.menu}>
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>MENU</Text>
-            {MENU_ITEMS.map(item => {
+            {menuItems.map(item => {
               const isActive = item.destination === activeDestination;
               const content = (
                 <>
-                  <item.Icon color="#FFFFFF" size={16} />
+                  <UiIcon name={item.icon} color="#FFFFFF" size={16} />
                   <Text style={styles.itemLabel} numberOfLines={1}>
                     {item.label}
                   </Text>
+                  {typeof item.badge === 'number' ? (
+                    <View style={styles.badge}>
+                      <Text style={styles.badgeText}>{item.badge}</Text>
+                    </View>
+                  ) : null}
                 </>
               );
 
@@ -296,6 +274,20 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '600',
+  },
+  badge: {
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#2B74FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 5,
+  },
+  badgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '800',
   },
   profileRow: {
     flexDirection: 'row',

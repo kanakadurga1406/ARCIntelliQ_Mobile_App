@@ -1,39 +1,16 @@
 import React from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
+import type {NavItem} from '../../types/claimPortals';
 import type {ClaimPortalTheme} from '../../theme/claimPortals';
-import {
-  DashboardTabIcon,
-  GridTabIcon,
-  HomeTabIcon,
-  PlusMiniIcon,
-  ProfileTabIcon,
-} from './ClaimPortalsIcons';
-
-export type MainTab = 'home' | 'portals' | 'dashboard' | 'profile';
-
-type TabItem = {
-  id: MainTab;
-  label: string;
-  Icon: React.ComponentType<{color?: string; size?: number}>;
-};
-
-const LEFT_TABS: TabItem[] = [
-  {id: 'home', label: 'Home', Icon: HomeTabIcon},
-  {id: 'portals', label: 'Claim Portals', Icon: GridTabIcon},
-];
-
-const RIGHT_TABS: TabItem[] = [
-  {id: 'dashboard', label: 'Dashboard', Icon: DashboardTabIcon},
-  {id: 'profile', label: 'Profile', Icon: ProfileTabIcon},
-];
+import {UiIcon} from './UiIcon';
 
 type BottomTabBarProps = {
   theme: ClaimPortalTheme;
-  activeTab: MainTab;
+  tabs: NavItem[];
+  activeTab: string;
   bottomInset: number;
-  onChange: (tab: MainTab) => void;
-  onAddClaim: () => void;
+  onDestination: (destination: string) => void;
 };
 
 function TabButton({
@@ -42,7 +19,7 @@ function TabButton({
   color,
   onPress,
 }: {
-  tab: TabItem;
+  tab: NavItem;
   active: boolean;
   color: string;
   onPress: () => void;
@@ -54,7 +31,7 @@ function TabButton({
       accessibilityState={{selected: active}}
       accessibilityLabel={tab.label}
       style={styles.tab}>
-      <tab.Icon color={color} />
+      <UiIcon name={tab.icon} color={color} />
       <Text
         style={[styles.label, {color}, active && styles.labelActive]}
         numberOfLines={2}
@@ -68,11 +45,15 @@ function TabButton({
 
 export function BottomTabBar({
   theme,
+  tabs,
   activeTab,
   bottomInset,
-  onChange,
-  onAddClaim,
+  onDestination,
 }: BottomTabBarProps) {
+  if (tabs.length === 0) {
+    return null;
+  }
+
   return (
     <View
       style={[
@@ -83,45 +64,38 @@ export function BottomTabBar({
           paddingBottom: Math.max(bottomInset, 8),
         },
       ]}>
-      {LEFT_TABS.map(tab => {
-        const isActive = tab.id === activeTab;
+      {tabs.map(tab => {
+        if (tab.style === 'fab') {
+          return (
+            <View key={tab.id} style={styles.fabSlot}>
+              <Pressable
+                onPress={() => onDestination(tab.destination)}
+                accessibilityRole="button"
+                accessibilityLabel={tab.label}
+                style={({pressed}) => [styles.fabPress, pressed && {opacity: 0.88}]}>
+                <LinearGradient
+                  colors={['#3C8CFF', '#1E5EFF']}
+                  start={{x: 0, y: 0}}
+                  end={{x: 1, y: 1}}
+                  style={styles.fab}>
+                  <UiIcon name={tab.icon} color="#FFFFFF" size={22} />
+                </LinearGradient>
+              </Pressable>
+              <Text style={[styles.fabLabel, {color: theme.textMuted}]}>
+                {tab.label}
+              </Text>
+            </View>
+          );
+        }
+
+        const isActive = tab.destination === activeTab || tab.id === activeTab;
         return (
           <TabButton
             key={tab.id}
             tab={tab}
             active={isActive}
             color={isActive ? theme.primary : theme.textMuted}
-            onPress={() => onChange(tab.id)}
-          />
-        );
-      })}
-
-      <View style={styles.fabSlot}>
-        <Pressable
-          onPress={onAddClaim}
-          accessibilityRole="button"
-          accessibilityLabel="Add claim"
-          style={({pressed}) => [styles.fabPress, pressed && {opacity: 0.88}]}>
-          <LinearGradient
-            colors={['#3C8CFF', '#1E5EFF']}
-            start={{x: 0, y: 0}}
-            end={{x: 1, y: 1}}
-            style={styles.fab}>
-            <PlusMiniIcon color="#FFFFFF" size={22} />
-          </LinearGradient>
-        </Pressable>
-        <Text style={[styles.fabLabel, {color: theme.textMuted}]}>Add Claim</Text>
-      </View>
-
-      {RIGHT_TABS.map(tab => {
-        const isActive = tab.id === activeTab;
-        return (
-          <TabButton
-            key={tab.id}
-            tab={tab}
-            active={isActive}
-            color={isActive ? theme.primary : theme.textMuted}
-            onPress={() => onChange(tab.id)}
+            onPress={() => onDestination(tab.destination)}
           />
         );
       })}

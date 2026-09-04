@@ -1,4 +1,5 @@
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
+import type {ThemeScheme} from '../theme/claimPortals';
 import type {ClaimHandlerUser} from './auth';
 
 export type RootStackParamList = {
@@ -7,6 +8,8 @@ export type RootStackParamList = {
   ClaimHandlerLogin: undefined;
   ClaimHandlerHome: {user: ClaimHandlerUser};
   ClaimPortals: {user: ClaimHandlerUser};
+  Faqs: {scheme: ThemeScheme};
+  SmartSearch: {scheme: ThemeScheme};
 };
 
 export type SplashScreenProps = NativeStackScreenProps<
@@ -32,4 +35,14 @@ export type ClaimHandlerHomeScreenProps = NativeStackScreenProps<
 export type ClaimPortalsScreenProps = NativeStackScreenProps<
   RootStackParamList,
   'ClaimPortals'
+>;
+
+export type FaqsScreenProps = NativeStackScreenProps<
+  RootStackParamList,
+  'Faqs'
+>;
+
+export type SmartSearchScreenProps = NativeStackScreenProps<
+  RootStackParamList,
+  'SmartSearch'
 >;

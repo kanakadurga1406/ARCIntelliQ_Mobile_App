@@ -14,21 +14,17 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {fetchClaimPortalsDashboard} from '../api/claimPortals';
 import {clearSession} from '../api/session';
 import {AppHeader} from '../components/claimPortals/AppHeader';
-import {BottomTabBar, type MainTab} from '../components/claimPortals/BottomTabBar';
+import {BottomTabBar} from '../components/claimPortals/BottomTabBar';
 import {
   AddClaimSheet,
   BusinessRequestsSheet,
   FilterSheet,
   PortalActionsSheet,
   type AddClaimDraft,
-  type PortalActionId,
 } from '../components/claimPortals/ClaimPortalSheets';
 import {PortalCard} from '../components/claimPortals/PortalCard';
 import {PortalListControls} from '../components/claimPortals/PortalListControls';
-import {
-  SideDrawer,
-  type DrawerDestination,
-} from '../components/claimPortals/SideDrawer';
+import {SideDrawer} from '../components/claimPortals/SideDrawer';
 import {
   DashboardTabBody,
   HomeTabBody,
@@ -41,8 +37,10 @@ import {
 import type {
   ClaimPortal,
   ClaimPortalsDashboard,
+  PortalAction,
   PortalFilters,
-  PortalStatusFilter,
+  SortOption,
+  StatusChip,
 } from '../types/claimPortals';
 import type {ClaimPortalsScreenProps} from '../types/navigation';
 
@@ -53,42 +51,60 @@ const DEFAULT_FILTERS: PortalFilters = {
   sortBy: 'latest',
 };
 
+function portalValue(portal: ClaimPortal, field: string): string {
+  const fromValues = portal.values?.[field];
+  if (fromValues !== undefined) {
+    return String(fromValues);
+  }
+  if (field === 'name') {
+    return portal.name;
+  }
+  if (field === 'createdAt') {
+    return portal.createdAt;
+  }
+  if (field === 'status') {
+    return portal.status;
+  }
+  return '';
+}
+
 function applyPortalFilters(
   portals: ClaimPortal[],
   query: string,
   filters: PortalFilters,
+  chips: StatusChip[],
+  sortOptions: SortOption[],
 ): ClaimPortal[] {
   const normalizedQuery = query.trim().toLowerCase();
+  const chip = chips.find(item => item.id === filters.status);
 
   const filtered = portals.filter(portal => {
     const matchesQuery =
       !normalizedQuery ||
       portal.name.toLowerCase().includes(normalizedQuery) ||
-      portal.businessId.includes(normalizedQuery);
+      portal.businessId.toLowerCase().includes(normalizedQuery);
 
-    const matchesStatus =
-      filters.status === 'all' ||
-      (filters.status === 'new'
-        ? portal.isNewThisMonth
-        : portal.status === filters.status);
+    const matchesChip = !chip?.filter
+      ? true
+      : chip.filter.field === 'status'
+        ? portal.status === chip.filter.value
+        : (portal.flags ?? []).includes(chip.filter.value);
 
     const matchesFrom = !filters.fromDate || portal.createdAt >= filters.fromDate;
     const matchesTo = !filters.toDate || portal.createdAt <= filters.toDate;
 
-    return matchesQuery && matchesStatus && matchesFrom && matchesTo;
+    return matchesQuery && matchesChip && matchesFrom && matchesTo;
   });
 
+  const sort = sortOptions.find(item => item.id === filters.sortBy);
+
   return filtered.sort((left, right) => {
-    if (filters.sortBy === 'oldest') {
-      return left.createdAt.localeCompare(right.createdAt);
-    }
-    if (filters.sortBy === 'name-asc') {
-      return left.name.localeCompare(right.name);
-    }
-    if (filters.sortBy === 'name-desc') {
-      return right.name.localeCompare(left.name);
-    }
-    return right.createdAt.localeCompare(left.createdAt);
+    const field = sort?.field ?? 'createdAt';
+    const direction = sort?.direction ?? 'desc';
+    const comparison = portalValue(left, field).localeCompare(
+      portalValue(right, field),
+    );
+    return direction === 'asc' ? comparison : -comparison;
   });
 }
 
@@ -105,7 +121,7 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
   const user = route.params.user;
 
   const [scheme, setScheme] = useState<ThemeScheme>('light');
-  const [activeTab, setActiveTab] = useState<MainTab>('home');
+  const [activeTab, setActiveTab] = useState('home');
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
   const [requestsOpen, setRequestsOpen] = useState(false);
@@ -157,9 +173,24 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
   }, [loadDashboard]);
 
   const visiblePortals = useMemo(
-    () => applyPortalFilters(portals, query, filters),
-    [portals, query, filters],
+    () =>
+      applyPortalFilters(
+        portals,
+        query,
+        filters,
+        dashboard?.statusChips ?? [],
+        dashboard?.sortOptions ?? [],
+      ),
+    [portals, query, filters, dashboard],
   );
+
+  const tabDestinations = useMemo(() => {
+    return new Set(
+      (dashboard?.bottomTabs ?? [])
+        .filter(item => item.style !== 'fab')
+        .map(item => item.destination),
+    );
+  }, [dashboard]);
 
   const signOut = useCallback(() => {
     clearSession();
@@ -178,15 +209,11 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
     setSearchFocusToken(current => current + 1);
   }, []);
 
-  const handleDrawerNavigate = useCallback(
-    (destination: DrawerDestination) => {
+  const handleDestination = useCallback(
+    (destination: string) => {
       setDrawerOpen(false);
-      if (destination === 'portals') {
-        setActiveTab('portals');
-        return;
-      }
-      if (destination === 'dashboard') {
-        setActiveTab('dashboard');
+      if (tabDestinations.has(destination)) {
+        setActiveTab(destination);
         return;
       }
       if (destination === 'add-claim') {
@@ -197,15 +224,33 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
         openSearch();
         return;
       }
-      if (destination === 'profile') {
-        setActiveTab('profile');
-        return;
-      }
       if (destination === 'sign-out') {
         signOut();
+        return;
       }
+      if (destination === 'requests') {
+        setRequestsOpen(true);
+        return;
+      }
+      if (destination === 'faqs') {
+        navigation.navigate('Faqs', {scheme});
+        return;
+      }
+      if (destination === 'smart-search') {
+        navigation.navigate('SmartSearch', {scheme});
+        return;
+      }
+      showToast('This option will connect when the live API is ready.');
     },
-    [openAddClaim, openSearch, signOut],
+    [
+      navigation,
+      openAddClaim,
+      openSearch,
+      scheme,
+      showToast,
+      signOut,
+      tabDestinations,
+    ],
   );
 
   const handleAddClaimSubmit = useCallback(
@@ -221,64 +266,44 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
     [portals, showToast],
   );
 
-  const drawerDestination = useMemo<DrawerDestination | null>(() => {
-    if (activeTab === 'portals') {
-      return 'portals';
-    }
-    if (activeTab === 'dashboard') {
-      return 'dashboard';
-    }
-    if (activeTab === 'profile') {
-      return 'profile';
-    }
-    return null;
-  }, [activeTab]);
-
-  const handleStatusChange = (status: PortalStatusFilter) => {
+  const handleStatusChange = (status: string) => {
     setFilters(current => ({...current, status}));
   };
 
   const handleSortPress = () => {
-    const order: PortalFilters['sortBy'][] = [
-      'latest',
-      'oldest',
-      'name-asc',
-      'name-desc',
-    ];
+    const order = dashboard?.sortOptions ?? [];
+    if (order.length === 0) {
+      return;
+    }
     setFilters(current => {
-      const index = order.indexOf(current.sortBy);
-      return {...current, sortBy: order[(index + 1) % order.length]};
+      const index = order.findIndex(item => item.id === current.sortBy);
+      return {...current, sortBy: order[(index + 1) % order.length].id};
     });
   };
 
-  const handlePortalAction = (action: PortalActionId) => {
+  const handlePortalAction = (action: PortalAction) => {
     const portal = selectedPortal;
     setSelectedPortal(null);
     if (!portal) {
       return;
     }
 
-    if (action === 'view') {
-      Alert.alert(
-        portal.name,
-        `Business ID: ${portal.businessId}\nStatus: ${portal.status}\nCreated: ${portal.createdAt}`,
-      );
+    const destination = action.destination || action.id;
+
+    if (destination === 'view') {
+      const detail = [
+        ...portal.meta.map(field => `${field.label}: ${field.value}`),
+        `Status: ${portal.status}`,
+      ].join('\n');
+      Alert.alert(portal.name, detail);
       return;
     }
-    if (action === 'requests') {
-      setRequestsOpen(true);
-      return;
-    }
-    if (action === 'delete') {
+    if (destination === 'delete') {
       setPortals(current => current.filter(item => item.id !== portal.id));
       showToast(`${portal.name} removed from this device list.`);
       return;
     }
-    showToast(
-      action === 'edit'
-        ? 'Edit Portal will connect to the live API later.'
-        : 'Clone Portal will connect to the live API later.',
-    );
+    handleDestination(destination);
   };
 
   const renderPortals = () => {
@@ -325,20 +350,22 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
         ListHeaderComponent={
           <View style={styles.headerBlock}>
             <Text style={[styles.pageTitle, {color: theme.text}]}>
-              Claim Portals
+              {dashboard?.portalsPage.title || 'Claim Portals'}
             </Text>
             <Text style={[styles.pageSubtitle, {color: theme.textSecondary}]}>
-              Manage and monitor all business portals
+              {dashboard?.portalsPage.subtitle ||
+                'Manage and monitor all business portals'}
             </Text>
             {dashboard ? (
               <PortalListControls
                 theme={theme}
                 query={query}
                 onQueryChange={setQuery}
+                chips={dashboard.statusChips}
                 activeStatus={filters.status}
                 onStatusChange={handleStatusChange}
-                stats={dashboard.stats}
                 filterCount={countActiveFilters(filters)}
+                sortOptions={dashboard.sortOptions}
                 sortBy={filters.sortBy}
                 onSortPress={handleSortPress}
                 onFilterPress={() => setFilterOpen(true)}
@@ -384,6 +411,7 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
         onThemePress={() =>
           setScheme(current => (current === 'light' ? 'dark' : 'light'))
         }
+        onFaqsPress={() => navigation.navigate('Faqs', {scheme})}
         onProfilePress={() => setActiveTab('profile')}
       />
 
@@ -393,38 +421,60 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
           <HomeTabBody
             theme={theme}
             user={user}
-            stats={dashboard?.stats ?? null}
+            subtitle={dashboard?.home.subtitle ?? ''}
+            actions={dashboard?.home.actions ?? []}
+            statCards={dashboard?.statCards ?? null}
             isLoading={isLoading}
             isRefreshing={isRefreshing}
             errorMessage={errorMessage}
             onRefresh={() => loadDashboard(true)}
             onRetry={() => loadDashboard()}
-            onOpenPortals={() => setActiveTab('portals')}
-            onBusinessRequestsPress={() => setRequestsOpen(true)}
+            onAction={handleDestination}
+            onStatPress={card =>
+              card.destination ? handleDestination(card.destination) : undefined
+            }
           />
         ) : null}
         {activeTab === 'dashboard' ? (
           <DashboardTabBody
             theme={theme}
-            stats={dashboard?.stats ?? null}
-            summary={dashboard?.requestSummary ?? null}
+            dashboard={dashboard?.dashboard ?? null}
             isRefreshing={isRefreshing}
             onRefresh={() => loadDashboard(true)}
-            onOpenPortals={() => setActiveTab('portals')}
-            onOpenRequests={() => setRequestsOpen(true)}
+            onAction={handleDestination}
           />
         ) : null}
         {activeTab === 'profile' ? (
-          <ProfileTabBody theme={theme} user={user} onSignOut={signOut} />
+          <ProfileTabBody
+            theme={theme}
+            user={user}
+            extraFields={dashboard?.profileFields ?? []}
+            onSignOut={signOut}
+          />
+        ) : null}
+        {activeTab !== 'home' &&
+        activeTab !== 'portals' &&
+        activeTab !== 'dashboard' &&
+        activeTab !== 'profile' ? (
+          <View style={styles.centered}>
+            <Text style={[styles.pageTitle, {color: theme.text}]}>
+              {dashboard?.bottomTabs.find(item => item.destination === activeTab)
+                ?.label || 'New section'}
+            </Text>
+            <Text style={[styles.helper, {color: theme.textSecondary}]}>
+              This screen was sent by the API and will render its own content
+              when that endpoint is connected.
+            </Text>
+          </View>
         ) : null}
       </View>
 
       <BottomTabBar
         theme={theme}
+        tabs={dashboard?.bottomTabs ?? []}
         activeTab={activeTab}
         bottomInset={insets.bottom}
-        onChange={setActiveTab}
-        onAddClaim={openAddClaim}
+        onDestination={handleDestination}
       />
 
       {toast ? (
@@ -441,17 +491,20 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
         visible={drawerOpen}
         theme={theme}
         user={user}
-        activeDestination={drawerDestination}
+        menuItems={dashboard?.menuItems ?? []}
+        activeDestination={activeTab}
         topInset={insets.top}
         bottomInset={insets.bottom}
         onClose={() => setDrawerOpen(false)}
-        onNavigate={handleDrawerNavigate}
+        onNavigate={handleDestination}
       />
 
       <FilterSheet
         visible={filterOpen}
         theme={theme}
         value={filters}
+        statusChips={dashboard?.statusChips ?? []}
+        sortOptions={dashboard?.sortOptions ?? []}
         onClose={() => setFilterOpen(false)}
         onApply={next => {
           setFilters(next);
@@ -463,6 +516,7 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
         visible={Boolean(selectedPortal)}
         theme={theme}
         portal={selectedPortal}
+        actions={dashboard?.portalActions ?? []}
         onClose={() => setSelectedPortal(null)}
         onAction={handlePortalAction}
       />
@@ -470,14 +524,7 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
       <BusinessRequestsSheet
         visible={requestsOpen}
         theme={theme}
-        summary={
-          dashboard?.requestSummary ?? {
-            total: 0,
-            pending: 0,
-            approved: 0,
-            rejected: 0,
-          }
-        }
+        rows={dashboard?.requestSummary ?? []}
         onClose={() => setRequestsOpen(false)}
         onViewAll={() => {
           setRequestsOpen(false);

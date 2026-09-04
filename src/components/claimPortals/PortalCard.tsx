@@ -2,18 +2,9 @@ import React from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
 import type {ClaimPortal} from '../../types/claimPortals';
 import type {ClaimPortalTheme} from '../../theme/claimPortals';
-import {
-  formatPortalDate,
-  getAvatarColor,
-  getInitials,
-} from '../../theme/claimPortals';
-import {
-  BriefcaseMiniIcon,
-  ChevronRightIcon,
-  DotsIcon,
-  FolderMiniIcon,
-  UsersMiniIcon,
-} from './ClaimPortalsIcons';
+import {getAvatarColor, getInitials} from '../../theme/claimPortals';
+import {ChevronRightIcon, DotsIcon} from './ClaimPortalsIcons';
+import {UiIcon} from './UiIcon';
 
 type PortalCardProps = {
   theme: ClaimPortalTheme;
@@ -28,7 +19,7 @@ export function PortalCard({
   onPress,
   onMenuPress,
 }: PortalCardProps) {
-  const isActive = portal.status === 'active';
+  const isActive = portal.status.toLowerCase() === 'active';
 
   return (
     <Pressable
@@ -84,44 +75,30 @@ export function PortalCard({
         </Pressable>
       </View>
 
-      <View style={styles.metaRow}>
-        <View style={styles.meta}>
-          <Text style={[styles.metaLabel, {color: theme.textMuted}]}>
-            BUSINESS ID
-          </Text>
-          <Text style={[styles.metaValue, {color: theme.text}]}>
-            {portal.businessId}
-          </Text>
+      {portal.meta.length > 0 ? (
+        <View style={styles.metaRow}>
+          {portal.meta.map(field => (
+            <View key={field.id} style={styles.meta}>
+              <Text style={[styles.metaLabel, {color: theme.textMuted}]}>
+                {field.label}
+              </Text>
+              <Text style={[styles.metaValue, {color: theme.text}]}>
+                {field.value}
+              </Text>
+            </View>
+          ))}
         </View>
-        <View style={styles.meta}>
-          <Text style={[styles.metaLabel, {color: theme.textMuted}]}>
-            CREATED DATE
-          </Text>
-          <Text style={[styles.metaValue, {color: theme.text}]}>
-            {formatPortalDate(portal.createdAt)}
-          </Text>
-        </View>
-      </View>
+      ) : null}
 
       <View style={styles.footer}>
-        <View style={styles.metric}>
-          <BriefcaseMiniIcon color={theme.textMuted} />
-          <Text style={[styles.metricText, {color: theme.textSecondary}]}>
-            {portal.linkedBusinesses}
-          </Text>
-        </View>
-        <View style={styles.metric}>
-          <FolderMiniIcon color={theme.textMuted} />
-          <Text style={[styles.metricText, {color: theme.textSecondary}]}>
-            {portal.documents}
-          </Text>
-        </View>
-        <View style={styles.metric}>
-          <UsersMiniIcon color={theme.primary} />
-          <Text style={[styles.metricText, {color: theme.textSecondary}]}>
-            {portal.assignedUsers}
-          </Text>
-        </View>
+        {portal.metrics.map(metric => (
+          <View key={metric.id} style={styles.metric}>
+            <UiIcon name={metric.icon} color={theme.textMuted} size={14} />
+            <Text style={[styles.metricText, {color: theme.textSecondary}]}>
+              {metric.value}
+            </Text>
+          </View>
+        ))}
         <View style={styles.spacer} />
         <ChevronRightIcon color={theme.textMuted} />
       </View>
@@ -185,10 +162,13 @@ const styles = StyleSheet.create({
   },
   metaRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     marginTop: 14,
+    gap: 12,
   },
   meta: {
-    flex: 1,
+    flexGrow: 1,
+    minWidth: '40%',
   },
   metaLabel: {
     fontSize: 10,

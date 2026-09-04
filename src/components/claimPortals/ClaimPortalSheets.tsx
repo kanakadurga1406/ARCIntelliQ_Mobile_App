@@ -10,51 +10,33 @@ import {
   View,
 } from 'react-native';
 import type {
-  BusinessRequestSummary,
   ClaimPortal,
+  PortalAction,
   PortalFilters,
-  PortalSortOption,
-  PortalStatusFilter,
+  SortOption,
+  StatusChip,
+  SummaryRow,
 } from '../../types/claimPortals';
 import type {ClaimPortalTheme} from '../../theme/claimPortals';
 import {BottomSheet} from './BottomSheet';
-import {
-  CheckMiniIcon,
-  ClockMiniIcon,
-  CloseIcon,
-  CopyMiniIcon,
-  DocumentIcon,
-  EyeMiniIcon,
-  PencilMiniIcon,
-  TrashMiniIcon,
-} from './ClaimPortalsIcons';
+import {getToneColors, UiIcon} from './UiIcon';
 
 type FilterSheetProps = {
   visible: boolean;
   theme: ClaimPortalTheme;
   value: PortalFilters;
+  statusChips: StatusChip[];
+  sortOptions: SortOption[];
   onClose: () => void;
   onApply: (next: PortalFilters) => void;
 };
-
-const STATUS_OPTIONS: {id: Exclude<PortalStatusFilter, 'new'>; label: string}[] =
-  [
-    {id: 'all', label: 'All'},
-    {id: 'active', label: 'Active'},
-    {id: 'inactive', label: 'Inactive'},
-  ];
-
-const SORT_OPTIONS: {id: PortalSortOption; label: string}[] = [
-  {id: 'latest', label: 'Latest'},
-  {id: 'oldest', label: 'Oldest'},
-  {id: 'name-asc', label: 'Name A-Z'},
-  {id: 'name-desc', label: 'Name Z-A'},
-];
 
 export function FilterSheet({
   visible,
   theme,
   value,
+  statusChips,
+  sortOptions,
   onClose,
   onApply,
 }: FilterSheetProps) {
@@ -76,7 +58,7 @@ export function FilterSheet({
         STATUS
       </Text>
       <View style={styles.rowWrap}>
-        {STATUS_OPTIONS.map(option => {
+        {statusChips.map(option => {
           const selected = draft.status === option.id;
           return (
             <Pressable
@@ -122,7 +104,7 @@ export function FilterSheet({
         SORT BY
       </Text>
       <View style={styles.rowWrap}>
-        {SORT_OPTIONS.map(option => {
+        {sortOptions.map(option => {
           const selected = draft.sortBy === option.id;
           return (
             <Pressable
@@ -150,10 +132,10 @@ export function FilterSheet({
         <Pressable
           onPress={() =>
             setDraft({
-              status: 'all',
+              status: statusChips[0]?.id ?? 'all',
               fromDate: '',
               toDate: '',
-              sortBy: 'latest',
+              sortBy: sortOptions[0]?.id ?? 'latest',
             })
           }
           style={[styles.reset, {borderColor: theme.border}]}>
@@ -204,21 +186,16 @@ type ActionsSheetProps = {
   visible: boolean;
   theme: ClaimPortalTheme;
   portal: ClaimPortal | null;
+  actions: PortalAction[];
   onClose: () => void;
-  onAction: (action: PortalActionId) => void;
+  onAction: (action: PortalAction) => void;
 };
-
-export type PortalActionId =
-  | 'view'
-  | 'edit'
-  | 'requests'
-  | 'clone'
-  | 'delete';
 
 export function PortalActionsSheet({
   visible,
   theme,
   portal,
+  actions,
   onClose,
   onAction,
 }: ActionsSheetProps) {
@@ -233,37 +210,24 @@ export function PortalActionsSheet({
           {portal.name}
         </Text>
       ) : null}
-      <ActionRow
-        theme={theme}
-        label="View Details"
-        icon={<EyeMiniIcon color={theme.text} />}
-        onPress={() => onAction('view')}
-      />
-      <ActionRow
-        theme={theme}
-        label="Edit Portal"
-        icon={<PencilMiniIcon color={theme.text} />}
-        onPress={() => onAction('edit')}
-      />
-      <ActionRow
-        theme={theme}
-        label="Business Requests"
-        icon={<DocumentIcon color={theme.text} />}
-        onPress={() => onAction('requests')}
-      />
-      <ActionRow
-        theme={theme}
-        label="Clone Portal"
-        icon={<CopyMiniIcon color={theme.text} />}
-        onPress={() => onAction('clone')}
-      />
-      <ActionRow
-        theme={theme}
-        label="Delete Portal"
-        icon={<TrashMiniIcon color={theme.danger} />}
-        destructive
-        onPress={() => onAction('delete')}
-      />
+      {actions.map(action => {
+        const destructive = action.tone === 'danger';
+        return (
+          <ActionRow
+            key={action.id}
+            theme={theme}
+            label={action.label}
+            icon={
+              <UiIcon
+                name={action.icon}
+                color={destructive ? theme.danger : theme.text}
+              />
+            }
+            destructive={destructive}
+            onPress={() => onAction(action)}
+          />
+        );
+      })}
     </BottomSheet>
   );
 }
@@ -305,7 +269,7 @@ function ActionRow({
 type RequestsSheetProps = {
   visible: boolean;
   theme: ClaimPortalTheme;
-  summary: BusinessRequestSummary;
+  rows: SummaryRow[];
   onClose: () => void;
   onViewAll: () => void;
 };
@@ -313,32 +277,10 @@ type RequestsSheetProps = {
 export function BusinessRequestsSheet({
   visible,
   theme,
-  summary,
+  rows,
   onClose,
   onViewAll,
 }: RequestsSheetProps) {
-  const rows = [
-    {
-      label: 'Total',
-      value: summary.total,
-      icon: <DocumentIcon color={theme.textSecondary} />,
-    },
-    {
-      label: 'Pending',
-      value: summary.pending,
-      icon: <ClockMiniIcon color={theme.warning} />,
-    },
-    {
-      label: 'Approved',
-      value: summary.approved,
-      icon: <CheckMiniIcon color={theme.success} />,
-    },
-    {
-      label: 'Rejected',
-      value: summary.rejected,
-      icon: <CloseIcon color={theme.danger} size={12} />,
-    },
-  ];
 
   return (
     <BottomSheet
@@ -346,21 +288,24 @@ export function BusinessRequestsSheet({
       title="Business Requests"
       theme={theme}
       onClose={onClose}>
-      {rows.map(row => (
-        <View
-          key={row.label}
-          style={[styles.requestRow, {borderColor: theme.border}]}>
-          <View style={[styles.actionIcon, {backgroundColor: theme.chip}]}>
-            {row.icon}
+      {rows.map(row => {
+        const tone = getToneColors(theme, row.tone);
+        return (
+          <View
+            key={row.id}
+            style={[styles.requestRow, {borderColor: theme.border}]}>
+            <View style={[styles.actionIcon, {backgroundColor: theme.chip}]}>
+              {row.icon ? <UiIcon name={row.icon} color={tone.fg} /> : null}
+            </View>
+            <Text style={[styles.actionLabel, {color: theme.text}]}>
+              {row.label}
+            </Text>
+            <Text style={[styles.requestValue, {color: theme.text}]}>
+              {row.value}
+            </Text>
           </View>
-          <Text style={[styles.actionLabel, {color: theme.text}]}>
-            {row.label}
-          </Text>
-          <Text style={[styles.requestValue, {color: theme.text}]}>
-            {row.value}
-          </Text>
-        </View>
-      ))}
+        );
+      })}
       <Pressable
         onPress={onViewAll}
         style={[styles.apply, {backgroundColor: theme.primary, marginTop: 16}]}>

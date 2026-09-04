@@ -1,5 +1,5 @@
 import React from 'react';
-import {StyleSheet, View} from 'react-native';
+import {StyleSheet, Text, View} from 'react-native';
 import {colors} from '../../theme';
 
 type IconProps = {
@@ -86,6 +86,23 @@ export function SunIcon({color = '#F59E0B', size = 18}: IconProps) {
           },
         ]}
       />
+    </Canvas>
+  );
+}
+
+export function QuestionIcon({
+  color = colors.textPrimary,
+  size = 18,
+}: IconProps) {
+  return (
+    <Canvas size={size}>
+      <Text
+        style={[
+          styles.questionMark,
+          {color, fontSize: size * 0.92, lineHeight: size},
+        ]}>
+        ?
+      </Text>
     </Canvas>
   );
 }
@@ -644,6 +661,99 @@ export function CubeMiniIcon({color = colors.onPrimary, size = 16}: IconProps) {
   return <BoxIcon color={color} size={size} />;
 }
 
+export function DollarIcon({color = colors.textPrimary, size = 16}: IconProps) {
+  return (
+    <Canvas size={size}>
+      <Text style={[styles.dollar, {color, fontSize: size * 0.86, lineHeight: size}]}>
+        $
+      </Text>
+    </Canvas>
+  );
+}
+
+export function SparkleIcon({color = colors.primary, size = 16}: IconProps) {
+  return (
+    <Canvas size={size}>
+      <View
+        style={[
+          styles.sparkle,
+          {
+            backgroundColor: color,
+            width: size * 0.42,
+            height: size * 0.42,
+          },
+        ]}
+      />
+      <View
+        style={[
+          styles.sparkle,
+          styles.sparkleSmall,
+          {
+            backgroundColor: color,
+            width: size * 0.22,
+            height: size * 0.22,
+          },
+        ]}
+      />
+    </Canvas>
+  );
+}
+
+export function MicIcon({color = colors.textPrimary, size = 16}: IconProps) {
+  return (
+    <Canvas size={size}>
+      <View
+        style={[
+          styles.micHead,
+          {
+            borderColor: color,
+            width: size * 0.36,
+            height: size * 0.5,
+          },
+        ]}
+      />
+      <View
+        style={[
+          styles.micStand,
+          {backgroundColor: color, width: size * 0.08, height: size * 0.18},
+        ]}
+      />
+    </Canvas>
+  );
+}
+
+export function SendIcon({color = colors.onPrimary, size = 16}: IconProps) {
+  return (
+    <Canvas size={size}>
+      <View
+        style={[
+          styles.sendWing,
+          {
+            borderBottomColor: color,
+            borderLeftWidth: size * 0.28,
+            borderRightWidth: size * 0.28,
+            borderBottomWidth: size * 0.34,
+          },
+        ]}
+      />
+    </Canvas>
+  );
+}
+
+export function ChevronDownIcon({
+  color = colors.textMuted,
+  size = 8,
+}: IconProps) {
+  return (
+    <View
+      style={[
+        styles.chevronDown,
+        {width: size, height: size, borderColor: color},
+      ]}
+    />
+  );
+}
+
 const styles = StyleSheet.create({
   canvas: {
     alignItems: 'center',
@@ -664,6 +774,11 @@ const styles = StyleSheet.create({
   },
   sun: {
     borderRadius: 20,
+  },
+  questionMark: {
+    fontWeight: '800',
+    lineHeight: 18,
+    textAlign: 'center',
   },
   searchRing: {
     borderWidth: 1.7,
@@ -898,5 +1013,40 @@ const styles = StyleSheet.create({
     marginLeft: 3,
     borderWidth: 1.4,
     borderRadius: 2,
+  },
+  dollar: {
+    fontWeight: '800',
+    textAlign: 'center',
+    includeFontPadding: false,
+  },
+  sparkle: {
+    transform: [{rotate: '45deg'}],
+    borderRadius: 1,
+  },
+  sparkleSmall: {
+    position: 'absolute',
+    top: 1,
+    right: 1,
+  },
+  micHead: {
+    borderWidth: 1.6,
+    borderRadius: 10,
+    marginBottom: 1,
+  },
+  micStand: {
+    borderRadius: 1,
+  },
+  sendWing: {
+    width: 0,
+    height: 0,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    transform: [{rotate: '90deg'}],
+  },
+  chevronDown: {
+    borderRightWidth: 1.8,
+    borderBottomWidth: 1.8,
+    transform: [{rotate: '45deg'}],
+    marginTop: -3,
   },
 });
