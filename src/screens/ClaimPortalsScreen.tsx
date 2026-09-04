@@ -1,4 +1,4 @@
-import React, {useCallback, useEffect, useMemo, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -11,17 +11,22 @@ import {
   View,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {fetchClaimPortalsDashboard} from '../api/claimPortals';
+import {
+  fetchClaimPortalsDashboard,
+  fetchClaimPortalsPage,
+  PORTAL_PAGE_SIZE,
+} from '../api/claimPortals';
 import {clearSession} from '../api/session';
 import {AppHeader} from '../components/claimPortals/AppHeader';
 import {BottomTabBar} from '../components/claimPortals/BottomTabBar';
 import {
-  AddClaimSheet,
   BusinessRequestsSheet,
   FilterSheet,
   PortalActionsSheet,
   type AddClaimDraft,
 } from '../components/claimPortals/ClaimPortalSheets';
+import {IntakeWizard} from '../components/claimPortals/IntakeWizard';
+import type {IntakeDraft} from '../types/intake';
 import {PortalCard} from '../components/claimPortals/PortalCard';
 import {PortalListControls} from '../components/claimPortals/PortalListControls';
 import {SideDrawer} from '../components/claimPortals/SideDrawer';
@@ -43,6 +48,7 @@ import type {
   StatusChip,
 } from '../types/claimPortals';
 import type {ClaimPortalsScreenProps} from '../types/navigation';
+import {mergeUniquePortals} from '../utils/portalList';
 
 const DEFAULT_FILTERS: PortalFilters = {
   status: 'all',
@@ -132,12 +138,23 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
   const [filters, setFilters] = useState<PortalFilters>(DEFAULT_FILTERS);
   const [dashboard, setDashboard] = useState<ClaimPortalsDashboard | null>(null);
   const [portals, setPortals] = useState<ClaimPortal[]>([]);
+  const [listTotal, setListTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
+  const [isListLoading, setIsListLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [listError, setListError] = useState('');
   const [toast, setToast] = useState('');
 
   const theme = useMemo(() => getClaimPortalTheme(scheme), [scheme]);
+  const debouncedQuery = useDebouncedValue(query, 320);
+  const requestSeqRef = useRef(0);
+  const loadingMoreRef = useRef(false);
+  const hasMoreRef = useRef(true);
+  const portalsRef = useRef<ClaimPortal[]>([]);
 
   const showToast = useCallback((message: string) => {
     setToast(message);
@@ -155,7 +172,6 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
     try {
       const data = await fetchClaimPortalsDashboard();
       setDashboard(data);
-      setPortals(data.portals);
     } catch (error) {
       setErrorMessage(
         error instanceof Error
@@ -167,6 +183,74 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
       setIsRefreshing(false);
     }
   }, []);
+
+  const loadPortalPage = useCallback(
+    async (nextPage: number, mode: 'replace' | 'append') => {
+      if (mode === 'append') {
+        if (loadingMoreRef.current || !hasMoreRef.current) {
+          return;
+        }
+        loadingMoreRef.current = true;
+        setIsLoadingMore(true);
+      } else {
+        requestSeqRef.current += 1;
+        hasMoreRef.current = true;
+        if (portalsRef.current.length === 0) {
+          setIsListLoading(true);
+        }
+      }
+
+      const requestId = requestSeqRef.current;
+      setListError('');
+
+      try {
+        const result = await fetchClaimPortalsPage({
+          page: nextPage,
+          limit: PORTAL_PAGE_SIZE,
+          search: debouncedQuery,
+          filters,
+        });
+
+        if (requestId !== requestSeqRef.current) {
+          return;
+        }
+
+        hasMoreRef.current = result.hasMore;
+        setHasMore(result.hasMore);
+        setPage(result.page);
+        setListTotal(result.total);
+        setPortals(current => {
+          const next =
+            mode === 'replace'
+              ? result.items
+              : mergeUniquePortals(current, result.items);
+          portalsRef.current = next;
+          return next;
+        });
+      } catch (error) {
+        if (requestId !== requestSeqRef.current) {
+          return;
+        }
+        const message =
+          error instanceof Error
+            ? error.message
+            : 'Unable to load claim portals.';
+        if (mode === 'replace' && portalsRef.current.length === 0) {
+          setListError(message);
+        } else {
+          showToast(message);
+        }
+      } finally {
+        if (mode === 'append') {
+          loadingMoreRef.current = false;
+          setIsLoadingMore(false);
+        } else if (requestId === requestSeqRef.current) {
+          setIsListLoading(false);
+        }
+      }
+    },
+    [debouncedQuery, filters, showToast],
+  );
 
   useEffect(() => {
     loadDashboard();
@@ -199,6 +283,21 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
       routes: [{name: 'PortalSelect'}],
     });
   }, [navigation]);
+
+  const requestSignOut = useCallback(() => {
+    Alert.alert(
+      'Sign out',
+      'You will need to sign in again to access claim portals.',
+      [
+        {text: 'Cancel', style: 'cancel'},
+        {text: 'Sign out', style: 'destructive', onPress: signOut},
+      ],
+    );
+  }, [signOut]);
+
+  const toggleTheme = useCallback(() => {
+    setScheme(current => (current === 'light' ? 'dark' : 'light'));
+  }, []);
 
   const openAddClaim = useCallback(() => {
     setAddClaimOpen(true);
@@ -254,13 +353,17 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
   );
 
   const handleAddClaimSubmit = useCallback(
-    (draft: AddClaimDraft) => {
+    (draft: IntakeDraft) => {
       setAddClaimOpen(false);
       const portalName = portals.find(item => item.id === draft.portalId)?.name;
+      const label =
+        [draft.claimType, draft.driverLastName || draft.callerName]
+          .filter(Boolean)
+          .join(' · ') || 'Intake';
       showToast(
         portalName
-          ? `${draft.title} saved for ${portalName}. Live submit comes next.`
-          : `${draft.title} saved on this device. Live submit comes next.`,
+          ? `${label} submitted for ${portalName}. Live API comes next.`
+          : `${label} submitted on this device. Live API comes next.`,
       );
     },
     [portals, showToast],
@@ -307,7 +410,7 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
   };
 
   const renderPortals = () => {
-    if (isLoading) {
+    if (isListLoading && portals.length === 0) {
       return (
         <View style={styles.centered}>
           <ActivityIndicator color={theme.primary} />
@@ -318,14 +421,14 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
       );
     }
 
-    if (errorMessage) {
+    if (listError && portals.length === 0) {
       return (
         <View style={styles.centered}>
           <Text style={[styles.helper, {color: theme.danger}]}>
-            {errorMessage}
+            {listError}
           </Text>
           <Pressable
-            onPress={() => loadDashboard()}
+            onPress={() => loadPortalPage(1, 'replace')}
             style={[styles.retry, {backgroundColor: theme.primary}]}>
             <Text style={[styles.retryText, {color: theme.onPrimary}]}>
               Try again
@@ -337,7 +440,7 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
 
     return (
       <FlatList
-        data={visiblePortals}
+        data={portals}
         keyExtractor={item => item.id}
         renderItem={({item}) => (
           <PortalCard
@@ -369,28 +472,56 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
                 sortBy={filters.sortBy}
                 onSortPress={handleSortPress}
                 onFilterPress={() => setFilterOpen(true)}
-                resultCount={visiblePortals.length}
+                resultCount={listTotal}
+                loadedCount={portals.length}
                 searchFocusToken={searchFocusToken}
               />
             ) : null}
           </View>
         }
         ListEmptyComponent={
-          <Text style={[styles.empty, {color: theme.textSecondary}]}>
-            No portals match your search or filters.
-          </Text>
+          isListLoading ? undefined : (
+            <Text style={[styles.empty, {color: theme.textSecondary}]}>
+              No portals match your search or filters.
+            </Text>
+          )
         }
         ListFooterComponent={
-          <Text style={[styles.footer, {color: theme.textMuted}]}>
-            © 2026 ARC Global Risk · Powered by WebAppClouds
-          </Text>
+          <View style={styles.listFooter}>
+            {isLoadingMore ? (
+              <View style={styles.moreRow}>
+                <ActivityIndicator color={theme.primary} />
+                <Text style={[styles.moreText, {color: theme.textSecondary}]}>
+                  Loading more portals...
+                </Text>
+              </View>
+            ) : null}
+            {!hasMore && portals.length > 0 ? (
+              <Text style={[styles.endText, {color: theme.textMuted}]}>
+                All {listTotal} portals loaded
+              </Text>
+            ) : null}
+            <Text style={[styles.footer, {color: theme.textMuted}]}>
+              © 2026 ARC Global Risk · Powered by WebAppClouds
+            </Text>
+          </View>
         }
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        onEndReached={() => {
+          if (!isListLoading && !isRefreshing) {
+            loadPortalPage(page + 1, 'append');
+          }
+        }}
+        onEndReachedThreshold={0.35}
+        initialNumToRender={10}
+        maxToRenderPerBatch={10}
+        windowSize={7}
+        removeClippedSubviews
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
-            onRefresh={() => loadDashboard(true)}
+            onRefresh={refreshPortalsTab}
             tintColor={theme.primary}
           />
         }
@@ -532,7 +663,7 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
         }}
       />
 
-      <AddClaimSheet
+      <IntakeWizard
         visible={addClaimOpen}
         theme={theme}
         portals={portals}
@@ -593,6 +724,26 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 24,
     fontSize: 14,
+  },
+  listFooter: {
+    paddingTop: 4,
+  },
+  moreRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+  },
+  moreText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  endText: {
+    textAlign: 'center',
+    marginTop: 6,
+    fontSize: 12,
+    fontWeight: '600',
   },
   footer: {
     textAlign: 'center',

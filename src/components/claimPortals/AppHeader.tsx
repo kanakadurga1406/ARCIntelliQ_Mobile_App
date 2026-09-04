@@ -86,7 +86,11 @@ export function AppHeader({
           onPress={onProfilePress}
           accessibilityRole="button"
           accessibilityLabel="Open profile"
-          style={({pressed}) => [styles.avatar, pressed && {opacity: 0.85}]}>
+          style={({pressed}) => [
+            styles.avatar,
+            {backgroundColor: theme.primary},
+            pressed && {opacity: 0.85},
+          ]}>
           <Text style={styles.avatarText}>{getInitials(userName)}</Text>
         </Pressable>
       </View>

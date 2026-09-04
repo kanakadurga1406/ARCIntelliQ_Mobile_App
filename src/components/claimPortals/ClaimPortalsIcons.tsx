@@ -202,6 +202,44 @@ export function ChevronRightIcon({
   );
 }
 
+export function ChevronLeftIcon({
+  color = colors.textMuted,
+  size = 8,
+}: IconProps) {
+  return (
+    <View
+      style={[
+        styles.chevron,
+        {
+          width: size,
+          height: size,
+          borderColor: color,
+          transform: [{rotate: '225deg'}],
+        },
+      ]}
+    />
+  );
+}
+
+export function ChevronDownIcon({
+  color = colors.textMuted,
+  size = 8,
+}: IconProps) {
+  return (
+    <View
+      style={[
+        styles.chevron,
+        {
+          width: size,
+          height: size,
+          borderColor: color,
+          transform: [{rotate: '135deg'}],
+        },
+      ]}
+    />
+  );
+}
+
 export function BuildingIcon({color = colors.primary, size = 16}: IconProps) {
   return (
     <Canvas size={size}>
@@ -616,6 +654,56 @@ export function ListMiniIcon({color = colors.onPrimary, size = 16}: IconProps) {
   );
 }
 
+export function BellMiniIcon({color = colors.textPrimary, size = 16}: IconProps) {
+  return (
+    <Canvas size={size}>
+      <View
+        style={[
+          styles.bellDome,
+          {borderColor: color, width: size * 0.56, height: size * 0.48},
+        ]}
+      />
+      <View
+        style={[
+          styles.bellLip,
+          {backgroundColor: color, width: size * 0.72, height: 2},
+        ]}
+      />
+      <View
+        style={[
+          styles.bellClapper,
+          {backgroundColor: color, width: size * 0.12, height: size * 0.12},
+        ]}
+      />
+    </Canvas>
+  );
+}
+
+export function MailMiniIcon({color = colors.onPrimary, size = 16}: IconProps) {
+  return (
+    <Canvas size={size}>
+      <View
+        style={[
+          styles.mailBody,
+          {borderColor: color, width: size * 0.78, height: size * 0.54},
+        ]}
+      />
+      <View
+        style={[
+          styles.mailFlap,
+          {
+            borderBottomColor: color,
+            borderLeftWidth: size * 0.22,
+            borderRightWidth: size * 0.22,
+            borderBottomWidth: size * 0.18,
+            top: size * 0.18,
+          },
+        ]}
+      />
+    </Canvas>
+  );
+}
+
 export function LogoutMiniIcon({color = colors.danger, size = 16}: IconProps) {
   return (
     <Canvas size={size}>
@@ -988,6 +1076,31 @@ const styles = StyleSheet.create({
   listLine: {
     height: 2,
     borderRadius: 1,
+  },
+  bellDome: {
+    borderWidth: 1.6,
+    borderBottomWidth: 0,
+    borderTopLeftRadius: 10,
+    borderTopRightRadius: 10,
+    marginBottom: 1,
+  },
+  bellLip: {
+    borderRadius: 1,
+  },
+  bellClapper: {
+    borderRadius: 6,
+    marginTop: 1.5,
+  },
+  mailBody: {
+    borderWidth: 1.6,
+    borderRadius: 2,
+  },
+  mailFlap: {
+    position: 'absolute',
+    width: 0,
+    height: 0,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
   },
   logoutBox: {
     borderWidth: 1.5,

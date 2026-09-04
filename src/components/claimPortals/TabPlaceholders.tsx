@@ -16,8 +16,8 @@ import type {
   StatCard,
 } from '../../types/claimPortals';
 import type {ClaimPortalTheme} from '../../theme/claimPortals';
-import {getInitials} from '../../theme/claimPortals';
 import {KpiGrid} from './KpiGrid';
+import {ProfileSettings} from './ProfileSettings';
 
 type HomeTabProps = {
   theme: ClaimPortalTheme;
@@ -280,9 +280,6 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     borderWidth: 1,
     padding: 16,
-  },
-  profileCard: {
-    alignItems: 'center',
   },
   cardLabel: {
     fontSize: 11,

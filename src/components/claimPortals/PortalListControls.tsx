@@ -17,6 +17,7 @@ type PortalListControlsProps = {
   onSortPress: () => void;
   onFilterPress: () => void;
   resultCount: number;
+  loadedCount: number;
   searchFocusToken?: number;
 };
 
@@ -33,6 +34,7 @@ export function PortalListControls({
   onSortPress,
   onFilterPress,
   resultCount,
+  loadedCount,
   searchFocusToken = 0,
 }: PortalListControlsProps) {
   const sortLabel =
@@ -109,7 +111,9 @@ export function PortalListControls({
 
       <View style={styles.listHeader}>
         <Text style={[styles.count, {color: theme.textSecondary}]}>
-          {resultCount} portals
+          {loadedCount < resultCount
+            ? `${loadedCount} of ${resultCount} portals`
+            : `${resultCount} portals`}
         </Text>
         {sortOptions.length > 0 ? (
           <Pressable
