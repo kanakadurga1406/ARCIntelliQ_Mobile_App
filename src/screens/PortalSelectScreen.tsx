@@ -15,8 +15,19 @@ import {
   PersonIcon,
 } from '../components/PortalIcons';
 import {colors} from '../theme';
+import type {UserRole} from '../types/auth';
+import type {PortalSelectScreenProps} from '../types/navigation';
 
-const PORTALS = [
+type PortalId = UserRole;
+
+type PortalOptionConfig = {
+  id: PortalId;
+  title: string;
+  subtitle: string;
+  Icon: React.ComponentType;
+};
+
+const PORTALS: PortalOptionConfig[] = [
   {
     id: 'claim-handler',
     title: 'Claim Handler Login',
@@ -47,7 +58,14 @@ function DotGrid() {
   );
 }
 
-function PortalOption({title, subtitle, Icon, onPress}) {
+type PortalOptionProps = {
+  title: string;
+  subtitle: string;
+  Icon: React.ComponentType;
+  onPress: () => void;
+};
+
+function PortalOption({title, subtitle, Icon, onPress}: PortalOptionProps) {
   return (
     <Pressable
       onPress={onPress}
@@ -73,12 +91,12 @@ function PortalOption({title, subtitle, Icon, onPress}) {
   );
 }
 
-const PortalSelectScreen = ({navigation}) => {
+const PortalSelectScreen = ({navigation}: PortalSelectScreenProps) => {
   const insets = useSafeAreaInsets();
 
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+      <StatusBar barStyle="dark-content" />
 
       <View style={styles.topWave} pointerEvents="none" />
       <View style={styles.topWaveSoft} pointerEvents="none" />
@@ -105,9 +123,6 @@ const PortalSelectScreen = ({navigation}) => {
 
         <View style={styles.headingBlock}>
           <Text style={styles.title}>Where would you like to go</Text>
-          {/* <Text style={styles.subtitle}>
-            Select the appropriate secure login based on your role.
-          </Text> */}
         </View>
 
         <View style={styles.list}>
@@ -223,13 +238,6 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     textAlign: 'center',
     letterSpacing: -0.3,
-  },
-  subtitle: {
-    marginTop: 8,
-    fontSize: 12,
-    lineHeight: 14,
-    color: colors.textSecondary,
-    textAlign: 'center',
   },
   list: {
     gap: 14,

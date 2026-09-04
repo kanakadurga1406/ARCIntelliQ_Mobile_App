@@ -3,10 +3,14 @@ import {Pressable, StatusBar, StyleSheet, Text, View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {clearSession} from '../api/session';
 import {colors} from '../theme';
+import type {ClaimHandlerHomeScreenProps} from '../types/navigation';
 
-const ClaimHandlerHomeScreen = ({navigation, route}) => {
+const ClaimHandlerHomeScreen = ({
+  navigation,
+  route,
+}: ClaimHandlerHomeScreenProps) => {
   const insets = useSafeAreaInsets();
-  const user = route.params?.user;
+  const user = route.params.user;
 
   const signOut = () => {
     clearSession();
@@ -18,11 +22,11 @@ const ClaimHandlerHomeScreen = ({navigation, route}) => {
 
   return (
     <View style={[styles.root, {paddingTop: insets.top + 24}]}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+      <StatusBar barStyle="dark-content" />
       <Text style={styles.kicker}>Claim Handler</Text>
-      <Text style={styles.title}>Welcome, {user?.name || 'Handler'}</Text>
-      <Text style={styles.subtitle}>{user?.title}</Text>
-      <Text style={styles.email}>{user?.email}</Text>
+      <Text style={styles.title}>Welcome, {user.name || 'Handler'}</Text>
+      <Text style={styles.subtitle}>{user.title}</Text>
+      <Text style={styles.email}>{user.email}</Text>
       <Pressable
         onPress={signOut}
         style={({pressed}) => [styles.button, pressed && styles.buttonPressed]}>

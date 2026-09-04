@@ -11,6 +11,7 @@ import {
   Text,
   TextInput,
   View,
+  type KeyboardTypeOptions,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {ChevronIcon} from '../components/PortalIcons';
@@ -23,6 +24,19 @@ import {
 import {loginClaimHandler} from '../api/auth';
 import {setSession} from '../api/session';
 import {colors} from '../theme';
+import type {ClaimHandlerLoginScreenProps} from '../types/navigation';
+
+type FieldProps = {
+  label: string;
+  icon: React.ReactNode;
+  trailing?: React.ReactNode;
+  placeholder: string;
+  value: string;
+  onChangeText: (text: string) => void;
+  secureTextEntry?: boolean;
+  keyboardType?: KeyboardTypeOptions;
+  autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
+};
 
 function Field({
   label,
@@ -34,7 +48,7 @@ function Field({
   secureTextEntry,
   keyboardType,
   autoCapitalize,
-}) {
+}: FieldProps) {
   return (
     <View style={styles.field}>
       <Text style={styles.label}>
@@ -60,7 +74,9 @@ function Field({
   );
 }
 
-const ClaimHandlerLoginScreen = ({navigation}) => {
+const ClaimHandlerLoginScreen = ({
+  navigation,
+}: ClaimHandlerLoginScreenProps) => {
   const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -88,7 +104,11 @@ const ClaimHandlerLoginScreen = ({navigation}) => {
       setSession(session);
       navigation.replace('ClaimHandlerHome', {user: session.user});
     } catch (error) {
-      setErrorMessage(error.message || 'Unable to sign in. Please try again.');
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : 'Unable to sign in. Please try again.',
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -96,7 +116,7 @@ const ClaimHandlerLoginScreen = ({navigation}) => {
 
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+      <StatusBar barStyle="dark-content" />
       <View style={styles.topWave} pointerEvents="none" />
       <View style={styles.topWaveSoft} pointerEvents="none" />
       <View style={styles.bottomWave} pointerEvents="none" />

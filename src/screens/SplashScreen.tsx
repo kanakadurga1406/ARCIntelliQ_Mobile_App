@@ -2,19 +2,26 @@ import React, {useEffect, useRef} from 'react';
 import {View, Image, Animated, StyleSheet, Easing} from 'react-native';
 import BootSplash from 'react-native-bootsplash';
 import LinearGradient from 'react-native-linear-gradient';
-import MaskedView from '@react-native-masked-view/masked-view';
+import MaskedViewBase from '@react-native-masked-view/masked-view';
 import {colors, gradients} from '../theme';
+import type {SplashScreenProps} from '../types/navigation';
+
+const MaskedView = MaskedViewBase as unknown as React.ComponentType<{
+  style?: object;
+  maskElement: React.ReactElement;
+  children?: React.ReactNode;
+}>;
 
 const logoSource = require('../../assets/arcintelliq-logo.png');
 
-const SplashScreen = ({navigation}) => {
+const SplashScreen = ({navigation}: SplashScreenProps) => {
   const logoOpacity = useRef(new Animated.Value(0)).current;
   const logoScale = useRef(new Animated.Value(0.92)).current;
   const shineAnim = useRef(new Animated.Value(0)).current;
   const splashOpacity = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    let finishTimer;
+    let finishTimer: ReturnType<typeof setTimeout> | undefined;
 
     const startAnimation = async () => {
       await BootSplash.hide({fade: false});
@@ -102,7 +109,7 @@ const SplashScreen = ({navigation}) => {
               },
             ]}>
             <LinearGradient
-              colors={gradients.splashShine}
+              colors={[...gradients.splashShine]}
               start={{x: 0, y: 0}}
               end={{x: 1, y: 0}}
               style={styles.shine}

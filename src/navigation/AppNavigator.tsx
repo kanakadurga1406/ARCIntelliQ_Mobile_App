@@ -1,12 +1,13 @@
 import React from 'react';
 import {NavigationContainer} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
+import type {RootStackParamList} from '../types/navigation';
 import SplashScreen from '../screens/SplashScreen';
 import PortalSelectScreen from '../screens/PortalSelectScreen';
 import ClaimHandlerLoginScreen from '../screens/ClaimHandlerLoginScreen';
 import ClaimHandlerHomeScreen from '../screens/ClaimHandlerHomeScreen';
 
-const Stack = createNativeStackNavigator();
+const Stack = createNativeStackNavigator<RootStackParamList>();
 
 const AppNavigator = () => {
   return (

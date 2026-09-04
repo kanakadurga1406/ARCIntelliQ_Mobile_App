@@ -2,6 +2,11 @@ import React from 'react';
 import {StyleSheet, View} from 'react-native';
 import {colors} from '../theme';
 
+type ChevronIconProps = {
+  color?: string;
+  size?: number;
+};
+
 export function BriefcaseIcon() {
   return (
     <View style={styles.canvas}>
@@ -31,7 +36,10 @@ export function HardHatIcon() {
   );
 }
 
-export function ChevronIcon({color = colors.primaryDark, size = 8}) {
+export function ChevronIcon({
+  color = colors.primaryDark,
+  size = 8,
+}: ChevronIconProps) {
   return (
     <View
       style={[
@@ -101,9 +109,9 @@ const styles = StyleSheet.create({
   hatBrim: {
     width: 18,
     height: 2.5,
-    marginTop: 1.5,
     borderRadius: 1.5,
     backgroundColor: colors.primaryMid,
+    marginTop: 1.5,
   },
   chevron: {
     marginLeft: -1,

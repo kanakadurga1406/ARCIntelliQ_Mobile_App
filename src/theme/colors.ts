@@ -32,7 +32,7 @@ export const colors = {
   danger: '#E11D48',
   success: '#22A55B',
   onPrimary: '#FFFFFF',
-};
+} as const;
 
 export const gradients = {
   brandLeft: [colors.primaryLight, colors.primaryDeep],
@@ -44,4 +44,6 @@ export const gradients = {
     'rgba(43,116,255,0.16)',
     'rgba(43,116,255,0)',
   ],
-};
+} as const;
+
+export type ColorName = keyof typeof colors;

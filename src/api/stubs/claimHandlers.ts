@@ -1,4 +1,6 @@
-export const CLAIM_HANDLER_USERS = [
+import type {ClaimHandlerAccount} from '../../types/auth';
+
+export const CLAIM_HANDLER_USERS: ClaimHandlerAccount[] = [
   {
     id: 'ch-1001',
     name: 'Alex Rivera',
