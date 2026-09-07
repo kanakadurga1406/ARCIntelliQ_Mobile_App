@@ -10,7 +10,13 @@ export type IntakeFieldType =
   | 'time'
   | 'portal';
 
-export type IntakeValidation = 'required' | 'email' | 'phone10' | 'date' | 'time';
+export type IntakeValidation =
+  | 'required'
+  | 'email'
+  | 'phone'
+  | 'phone10'
+  | 'date'
+  | 'time';
 
 export type IntakeOption = {
   id: string;
