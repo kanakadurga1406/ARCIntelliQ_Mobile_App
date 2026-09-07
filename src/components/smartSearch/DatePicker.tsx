@@ -1,7 +1,11 @@
-import React, {useEffect, useState} from 'react';
-import {Modal, Pressable, StyleSheet, Text, View} from 'react-native';
+import React, {useEffect, useMemo, useState} from 'react';
+import {Modal, Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
 import type {ClaimPortalTheme} from '../../theme/claimPortals';
-import {ChevronLeftIcon, ChevronRightIcon} from '../claimPortals/ClaimPortalsIcons';
+import {
+  ChevronDownIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+} from '../claimPortals/ClaimPortalsIcons';
 
 const WEEKDAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 const MONTHS = [
@@ -68,14 +72,21 @@ export function DatePicker({
 }: DatePickerProps) {
   const [cursor, setCursor] = useState(() => parseIsoDate(value));
   const [draft, setDraft] = useState(() => toIsoDate(parseIsoDate(value)));
+  const [panel, setPanel] = useState<'day' | 'month' | 'year'>('day');
 
   useEffect(() => {
     if (visible) {
       const next = parseIsoDate(value);
       setCursor(next);
       setDraft(value && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : '');
+      setPanel('day');
     }
   }, [visible, value]);
+
+  const years = useMemo(() => {
+    const current = new Date().getFullYear();
+    return Array.from({length: 31}, (_, index) => current - 15 + index);
+  }, []);
 
   const year = cursor.getFullYear();
   const month = cursor.getMonth();
@@ -89,8 +100,34 @@ export function DatePicker({
     cells.push(null);
   }
 
+  const goTo = (nextYear: number, nextMonth: number) => {
+    setCursor(new Date(nextYear, nextMonth, 1));
+    setPanel('day');
+    if (!draft) {
+      return;
+    }
+    const day = Number(draft.split('-')[2]);
+    if (!day) {
+      return;
+    }
+    setDraft(
+      toIsoDate(
+        new Date(nextYear, nextMonth, Math.min(day, daysInMonth(nextYear, nextMonth))),
+      ),
+    );
+  };
+
   const shiftMonth = (delta: number) => {
-    setCursor(current => new Date(current.getFullYear(), current.getMonth() + delta, 1));
+    const next = new Date(year, month + delta, 1);
+    goTo(next.getFullYear(), next.getMonth());
+  };
+
+  const selectMonth = (nextMonth: number) => {
+    goTo(year, nextMonth);
+  };
+
+  const selectYear = (nextYear: number) => {
+    goTo(nextYear, month);
   };
 
   const apply = () => {
@@ -137,9 +174,40 @@ export function DatePicker({
               style={[styles.monthNav, {borderColor: theme.border}]}>
               <ChevronLeftIcon color={theme.text} size={9} />
             </Pressable>
-            <Text style={[styles.monthLabel, {color: theme.text}]}>
-              {MONTHS[month]} {year}
-            </Text>
+            <View style={styles.selectors}>
+              <Pressable
+                onPress={() => setPanel(current => (current === 'month' ? 'day' : 'month'))}
+                accessibilityRole="button"
+                accessibilityLabel="Select month"
+                style={[
+                  styles.selector,
+                  {
+                    borderColor: panel === 'month' ? theme.primary : theme.border,
+                    backgroundColor: theme.input,
+                  },
+                ]}>
+                <Text style={[styles.selectorText, {color: theme.text}]}>
+                  {MONTHS[month]}
+                </Text>
+                <ChevronDownIcon color={theme.textMuted} size={8} />
+              </Pressable>
+              <Pressable
+                onPress={() => setPanel(current => (current === 'year' ? 'day' : 'year'))}
+                accessibilityRole="button"
+                accessibilityLabel="Select year"
+                style={[
+                  styles.selector,
+                  {
+                    borderColor: panel === 'year' ? theme.primary : theme.border,
+                    backgroundColor: theme.input,
+                  },
+                ]}>
+                <Text style={[styles.selectorText, {color: theme.text}]}>
+                  {year}
+                </Text>
+                <ChevronDownIcon color={theme.textMuted} size={8} />
+              </Pressable>
+            </View>
             <Pressable
               onPress={() => shiftMonth(1)}
               hitSlop={8}
@@ -150,45 +218,104 @@ export function DatePicker({
             </Pressable>
           </View>
 
-          <View style={styles.weekRow}>
-            {WEEKDAYS.map(day => (
-              <Text key={day} style={[styles.weekday, {color: theme.textMuted}]}>
-                {day}
-              </Text>
-            ))}
-          </View>
-
-          <View style={styles.grid}>
-            {cells.map((day, index) => {
-              if (!day) {
-                return <View key={`empty-${index}`} style={styles.dayCell} />;
-              }
-              const iso = toIsoDate(new Date(year, month, day));
-              const isSelected = draft === iso;
-              return (
-                <Pressable
-                  key={iso}
-                  onPress={() => setDraft(iso)}
-                  accessibilityRole="button"
-                  accessibilityLabel={iso}
-                  style={styles.dayCell}>
-                  <View
+          {panel === 'month' ? (
+            <View style={styles.optionGrid}>
+              {MONTHS.map((label, index) => {
+                const selected = index === month;
+                return (
+                  <Pressable
+                    key={label}
+                    onPress={() => selectMonth(index)}
                     style={[
-                      styles.dayInner,
-                      isSelected && {backgroundColor: theme.primary},
+                      styles.optionChip,
+                      {
+                        backgroundColor: selected ? theme.primary : theme.input,
+                        borderColor: selected ? theme.primary : theme.border,
+                      },
                     ]}>
                     <Text
                       style={[
-                        styles.dayText,
-                        {color: isSelected ? theme.onPrimary : theme.text},
+                        styles.optionText,
+                        {color: selected ? theme.onPrimary : theme.text},
                       ]}>
-                      {day}
+                      {label.slice(0, 3)}
                     </Text>
-                  </View>
-                </Pressable>
-              );
-            })}
-          </View>
+                  </Pressable>
+                );
+              })}
+            </View>
+          ) : null}
+
+          {panel === 'year' ? (
+            <ScrollView style={styles.yearList} keyboardShouldPersistTaps="handled">
+              {years.map(item => {
+                const selected = item === year;
+                return (
+                  <Pressable
+                    key={item}
+                    onPress={() => selectYear(item)}
+                    style={[
+                      styles.yearRow,
+                      {
+                        backgroundColor: selected ? theme.primary : theme.input,
+                        borderColor: selected ? theme.primary : theme.border,
+                      },
+                    ]}>
+                    <Text
+                      style={[
+                        styles.optionText,
+                        {color: selected ? theme.onPrimary : theme.text},
+                      ]}>
+                      {item}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          ) : null}
+
+          {panel === 'day' ? (
+            <>
+              <View style={styles.weekRow}>
+                {WEEKDAYS.map(day => (
+                  <Text key={day} style={[styles.weekday, {color: theme.textMuted}]}>
+                    {day}
+                  </Text>
+                ))}
+              </View>
+              <View style={styles.grid}>
+                {cells.map((day, index) => {
+                  if (!day) {
+                    return <View key={`empty-${index}`} style={styles.dayCell} />;
+                  }
+                  const iso = toIsoDate(new Date(year, month, day));
+                  const isSelected = draft === iso;
+                  return (
+                    <Pressable
+                      key={iso}
+                      onPress={() => setDraft(iso)}
+                      accessibilityRole="button"
+                      accessibilityLabel={iso}
+                      style={styles.dayCell}>
+                      <View
+                        style={[
+                          styles.dayInner,
+                          isSelected && {backgroundColor: theme.primary},
+                        ]}>
+                        <Text
+                          style={[
+                            styles.dayText,
+                            {color: isSelected ? theme.onPrimary : theme.text},
+                          ]}>
+                          {day}
+                        </Text>
+                      </View>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </>
+          ) : null}
 
           <View style={styles.actions}>
             <Pressable
@@ -264,9 +391,55 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  monthLabel: {
-    fontSize: 16,
+  selectors: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 6,
+  },
+  selector: {
+    minHeight: 36,
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  selectorText: {
+    fontSize: 14,
     fontWeight: '700',
+  },
+  optionGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 4,
+  },
+  optionChip: {
+    width: '31%',
+    flexGrow: 1,
+    minHeight: 40,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  optionText: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  yearList: {
+    maxHeight: 220,
+  },
+  yearRow: {
+    minHeight: 42,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
   },
   weekRow: {
     flexDirection: 'row',
