@@ -126,8 +126,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   wordmark: {
-    width: 132,
-    height: 18,
+    width: 148,
+    height: 22,
   },
   wordmarkDark: {
     tintColor: '#FFFFFF',

@@ -21,6 +21,7 @@ type FieldProps = {
   error?: string;
   hint?: string;
   flex?: boolean;
+  onFocus?: () => void;
 };
 
 export function FieldLabel({
@@ -63,6 +64,7 @@ export function TextField({
   placeholder,
   keyboardType,
   autoCapitalize = 'sentences',
+  onFocus,
 }: FieldProps & {
   value: string;
   onChangeText: (value: string) => void;
@@ -84,7 +86,10 @@ export function TextField({
         autoCapitalize={autoCapitalize}
         autoCorrect={false}
         returnKeyType="done"
-        onFocus={() => setFocused(true)}
+        onFocus={() => {
+          setFocused(true);
+          onFocus?.();
+        }}
         onBlur={() => setFocused(false)}
         style={[
           styles.input,
@@ -116,6 +121,7 @@ export function TextAreaField({
   value,
   onChangeText,
   placeholder,
+  onFocus,
 }: FieldProps & {
   value: string;
   onChangeText: (value: string) => void;
@@ -132,7 +138,10 @@ export function TextAreaField({
         placeholder={placeholder}
         placeholderTextColor={theme.textMuted}
         multiline
-        onFocus={() => setFocused(true)}
+        onFocus={() => {
+          setFocused(true);
+          onFocus?.();
+        }}
         onBlur={() => setFocused(false)}
         style={[
           styles.input,
@@ -164,6 +173,7 @@ export function PhoneField({
   value,
   onChangeText,
   hint,
+  onFocus,
 }: FieldProps & {
   value: string;
   onChangeText: (value: string) => void;
@@ -186,6 +196,7 @@ export function PhoneField({
           placeholder="5551234567"
           placeholderTextColor={theme.textMuted}
           keyboardType="phone-pad"
+          onFocus={onFocus}
           style={[
             styles.input,
             styles.phoneInput,

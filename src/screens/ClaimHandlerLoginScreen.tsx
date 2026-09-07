@@ -362,9 +362,9 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   title: {
-    fontSize: 24,
-    lineHeight: 30,
-    fontWeight: '800',
+    fontSize: 20,
+    lineHeight: 24,
+    fontWeight: '700',
     color: colors.textPrimary,
     letterSpacing: -0.3,
   },

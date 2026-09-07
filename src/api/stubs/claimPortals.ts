@@ -7,6 +7,8 @@ import type {
 import {formatPortalDate} from '../../theme/claimPortals';
 import {applyPortalFilters, paginatePortals} from '../../utils/portalList';
 import {FAQS} from './faqs';
+import {INTAKE_CONFIG} from './intake';
+import {PROFILE_PAGE} from './profile';
 
 type PortalSeed = {
   id: string;
@@ -353,10 +355,9 @@ export const CLAIM_PORTALS_DASHBOARD: ClaimPortalsDashboard = {
       tone: 'danger',
     },
   ],
-  profileFields: [
-    {id: 'handler-id', label: 'Handler ID', value: 'CH-2041'},
-    {id: 'region', label: 'Region', value: 'Southeast'},
-  ],
+  profileFields: PROFILE_PAGE.fields,
+  profile: PROFILE_PAGE,
+  intake: INTAKE_CONFIG,
   faqs: FAQS,
   requestSummary: [
     {id: 'total', label: 'Total', value: 5, icon: 'document'},

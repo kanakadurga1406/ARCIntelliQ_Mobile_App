@@ -1,3 +1,6 @@
+import type {IntakeConfig} from './intake';
+import type {ProfilePage} from './profile';
+
 export type UiTone =
   | 'primary'
   | 'success'
@@ -157,6 +160,8 @@ export type ClaimPortalsDashboard = {
   sortOptions: SortOption[];
   portalActions: PortalAction[];
   profileFields: ProfileField[];
+  profile: ProfilePage;
+  intake: IntakeConfig;
   faqs: FaqItem[];
   requestSummary: SummaryRow[];
   portals: ClaimPortal[];

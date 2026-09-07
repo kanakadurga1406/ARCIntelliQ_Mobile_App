@@ -27,6 +27,11 @@ import {
   MicIcon,
   SendIcon,
   SparkleIcon,
+  BellMiniIcon,
+  GlobeMiniIcon,
+  MailMiniIcon,
+  MoonIcon,
+  ShieldMiniIcon,
 } from './ClaimPortalsIcons';
 
 type IconComponent = React.ComponentType<{color?: string; size?: number}>;
@@ -57,6 +62,11 @@ const ICONS: Record<string, IconComponent> = {
   sparkle: SparkleIcon,
   mic: MicIcon,
   send: SendIcon,
+  mail: MailMiniIcon,
+  shield: ShieldMiniIcon,
+  globe: GlobeMiniIcon,
+  moon: MoonIcon,
+  bell: BellMiniIcon,
 };
 
 type UiIconProps = {

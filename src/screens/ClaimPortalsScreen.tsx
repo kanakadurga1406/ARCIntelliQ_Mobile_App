@@ -1,7 +1,6 @@
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Pressable,
   RefreshControl,
@@ -17,6 +16,7 @@ import {
   PORTAL_PAGE_SIZE,
 } from '../api/claimPortals';
 import {clearSession} from '../api/session';
+import {AppDialog, useAppDialog} from '../components/claimPortals/AppDialog';
 import {AppHeader} from '../components/claimPortals/AppHeader';
 import {BottomTabBar} from '../components/claimPortals/BottomTabBar';
 import {
@@ -47,6 +47,8 @@ import type {
   StatusChip,
 } from '../types/claimPortals';
 import type {ClaimPortalsScreenProps} from '../types/navigation';
+import {INTAKE_CONFIG} from '../api/stubs/intake';
+import {PROFILE_PAGE} from '../api/stubs/profile';
 import {mergeUniquePortals} from '../utils/portalList';
 
 const DEFAULT_FILTERS: PortalFilters = {
@@ -160,6 +162,7 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
   const [toast, setToast] = useState('');
 
   const theme = useMemo(() => getClaimPortalTheme(scheme), [scheme]);
+  const {dialog, showDialog, hideDialog} = useAppDialog();
   const debouncedQuery = useDebouncedValue(query, 320);
   const requestSeqRef = useRef(0);
   const loadingMoreRef = useRef(false);
@@ -308,15 +311,15 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
   }, [navigation]);
 
   const requestSignOut = useCallback(() => {
-    Alert.alert(
-      'Sign out',
-      'You will need to sign in again to access claim portals.',
-      [
-        {text: 'Cancel', style: 'cancel'},
-        {text: 'Sign out', style: 'destructive', onPress: signOut},
+    showDialog({
+      title: 'Sign out',
+      message: 'You will need to sign in again to access claim portals.',
+      buttons: [
+        {label: 'Cancel'},
+        {label: 'Sign out', tone: 'destructive', onPress: signOut},
       ],
-    );
-  }, [signOut]);
+    });
+  }, [showDialog, signOut]);
 
   const toggleTheme = useCallback(() => {
     setScheme(current => (current === 'light' ? 'dark' : 'light'));
@@ -421,7 +424,10 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
         ...portal.meta.map(field => `${field.label}: ${field.value}`),
         `Status: ${portal.status}`,
       ].join('\n');
-      Alert.alert(portal.name, detail);
+      showDialog({
+        title: portal.name,
+        message: detail,
+      });
       return;
     }
     if (destination === 'delete') {
@@ -602,7 +608,8 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
           <ProfileTabBody
             theme={theme}
             user={user}
-            extraFields={dashboard?.profileFields ?? []}
+            page={dashboard?.profile ?? PROFILE_PAGE}
+            extraFields={dashboard?.profileFields ?? dashboard?.profile.fields ?? []}
             onToggleTheme={toggleTheme}
             onSignOut={requestSignOut}
           />
@@ -691,8 +698,18 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
         visible={addClaimOpen}
         theme={theme}
         portals={portals}
+        config={dashboard?.intake ?? INTAKE_CONFIG}
         onClose={() => setAddClaimOpen(false)}
         onSubmit={handleAddClaimSubmit}
+      />
+
+      <AppDialog
+        visible={dialog.visible}
+        theme={theme}
+        title={dialog.title}
+        message={dialog.message}
+        buttons={dialog.buttons}
+        onClose={hideDialog}
       />
     </View>
   );
@@ -711,14 +728,14 @@ const styles = StyleSheet.create({
     paddingBottom: 4,
   },
   pageTitle: {
-    fontSize: 28,
-    lineHeight: 34,
-    fontWeight: '800',
+    fontSize: 20,
+    lineHeight: 24,
+    fontWeight: '700',
   },
   pageSubtitle: {
-    marginTop: 4,
-    marginBottom: 16,
-    fontSize: 14,
+    marginTop: 2,
+    marginBottom: 12,
+    fontSize: 13,
   },
   listContent: {
     paddingBottom: 24,

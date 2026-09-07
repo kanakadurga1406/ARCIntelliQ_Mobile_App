@@ -188,15 +188,15 @@ const styles = StyleSheet.create({
     paddingTop: 8,
   },
   title: {
-    fontSize: 26,
-    lineHeight: 32,
-    fontWeight: '800',
+    fontSize: 20,
+    lineHeight: 24,
+    fontWeight: '700',
   },
   subtitle: {
-    marginTop: 8,
-    marginBottom: 20,
-    fontSize: 14,
-    lineHeight: 20,
+    marginTop: 4,
+    marginBottom: 16,
+    fontSize: 13,
+    lineHeight: 18,
   },
   loader: {
     marginTop: 16,

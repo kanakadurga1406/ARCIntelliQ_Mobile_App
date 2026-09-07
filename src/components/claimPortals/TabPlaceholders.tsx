@@ -15,6 +15,7 @@ import type {
   ProfileField,
   StatCard,
 } from '../../types/claimPortals';
+import type {ProfilePage} from '../../types/profile';
 import type {ClaimPortalTheme} from '../../theme/claimPortals';
 import {KpiGrid} from './KpiGrid';
 import {ProfileSettings} from './ProfileSettings';
@@ -192,6 +193,7 @@ export function DashboardTabBody({
 type ProfileTabProps = {
   theme: ClaimPortalTheme;
   user: ClaimHandlerUser;
+  page: ProfilePage;
   extraFields: ProfileField[];
   onToggleTheme: () => void;
   onSignOut: () => void;
@@ -200,6 +202,7 @@ type ProfileTabProps = {
 export function ProfileTabBody({
   theme,
   user,
+  page,
   extraFields,
   onToggleTheme,
   onSignOut,
@@ -208,6 +211,7 @@ export function ProfileTabBody({
     <ProfileSettings
       theme={theme}
       user={user}
+      page={page}
       extraFields={extraFields}
       onToggleTheme={onToggleTheme}
       onSignOut={onSignOut}
@@ -225,14 +229,14 @@ const styles = StyleSheet.create({
     paddingBottom: 28,
   },
   title: {
-    fontSize: 26,
-    lineHeight: 32,
-    fontWeight: '800',
+    fontSize: 20,
+    lineHeight: 24,
+    fontWeight: '700',
   },
   subtitle: {
-    marginTop: 8,
-    fontSize: 14,
-    lineHeight: 20,
+    marginTop: 4,
+    fontSize: 13,
+    lineHeight: 18,
   },
   kpiWrap: {
     marginTop: 20,

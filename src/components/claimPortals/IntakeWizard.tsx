@@ -1,6 +1,6 @@
-import React, {useEffect, useMemo, useState} from 'react';
+import React, {useEffect, useMemo, useRef, useState} from 'react';
 import {
-  Alert,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -13,11 +13,11 @@ import {
 import LinearGradient from 'react-native-linear-gradient';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import type {ClaimPortal} from '../../types/claimPortals';
-import {
-  DEFAULT_INTAKE,
-  INTAKE_OPTIONS,
-  INTAKE_STEPS,
-  type IntakeDraft,
+import type {
+  IntakeConfig,
+  IntakeDraft,
+  IntakeField,
+  IntakeStep,
 } from '../../types/intake';
 import type {ClaimPortalTheme} from '../../theme/claimPortals';
 import {
@@ -26,6 +26,7 @@ import {
   ChevronRightIcon,
   CloseIcon,
 } from './ClaimPortalsIcons';
+import {AppDialog, useAppDialog} from './AppDialog';
 import {
   FieldRow,
   PhoneField,
@@ -35,68 +36,171 @@ import {
   TextField,
 } from './IntakeFields';
 
-type FieldErrors = Partial<Record<keyof IntakeDraft, string>>;
+type FieldErrors = Record<string, string>;
 
 type IntakeWizardProps = {
   visible: boolean;
   theme: ClaimPortalTheme;
   portals: ClaimPortal[];
+  config: IntakeConfig;
   onClose: () => void;
   onSubmit: (draft: IntakeDraft) => void;
 };
-
-const AUTO_FILLED: Array<keyof IntakeDraft> = [
-  'portalId',
-  'timeZone',
-  'country',
-  'hasCoDriver',
-];
-
-function isIntakeStarted(draft: IntakeDraft): boolean {
-  return (Object.keys(draft) as Array<keyof IntakeDraft>).some(
-    key => !AUTO_FILLED.includes(key) && draft[key].trim() !== '',
-  );
-}
 
 const DATE_PATTERN = /^\d{2}-\d{2}-\d{4}$/;
 const TIME_PATTERN = /^\d{2}:\d{2}$/;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+function allFields(config: IntakeConfig): IntakeField[] {
+  return config.steps.flatMap(step => step.fields);
+}
+
+function createDraft(config: IntakeConfig, portals: ClaimPortal[]): IntakeDraft {
+  const draft: IntakeDraft = {};
+  for (const field of allFields(config)) {
+    draft[field.id] = field.defaultValue ?? '';
+  }
+  if (!draft.portalId && portals.length > 0) {
+    const preferred =
+      portals.find(portal => portal.status === 'active') ?? portals[0];
+    draft.portalId = preferred.id;
+  }
+  return draft;
+}
+
+function isVisible(field: IntakeField, draft: IntakeDraft): boolean {
+  if (!field.visibleWhen) {
+    return true;
+  }
+  return draft[field.visibleWhen.field] === field.visibleWhen.equals;
+}
+
+function groupFields(fields: IntakeField[]): IntakeField[][] {
+  const groups: IntakeField[][] = [];
+  const byRow = new Map<string, IntakeField[]>();
+
+  fields.forEach(field => {
+    if (!field.row) {
+      groups.push([field]);
+      return;
+    }
+    const existing = byRow.get(field.row);
+    if (existing) {
+      existing.push(field);
+      return;
+    }
+    const group = [field];
+    byRow.set(field.row, group);
+    groups.push(group);
+  });
+
+  return groups;
+}
+
+function formatDateInput(value: string): string {
+  const digits = value.replace(/\D/g, '').slice(0, 8);
+  if (digits.length <= 2) {
+    return digits;
+  }
+  if (digits.length <= 4) {
+    return `${digits.slice(0, 2)}-${digits.slice(2)}`;
+  }
+  return `${digits.slice(0, 2)}-${digits.slice(2, 4)}-${digits.slice(4)}`;
+}
+
+function formatTimeInput(value: string): string {
+  const digits = value.replace(/\D/g, '').slice(0, 4);
+  if (digits.length <= 2) {
+    return digits;
+  }
+  return `${digits.slice(0, 2)}:${digits.slice(2)}`;
+}
+
+function validateField(field: IntakeField, value: string): string | undefined {
+  const rules = field.validation ?? (field.required ? ['required'] : []);
+  for (const rule of rules) {
+    if (rule === 'required' && !value.trim()) {
+      return REQUIRED_MESSAGE;
+    }
+    if (rule === 'email' && value && !EMAIL_PATTERN.test(value)) {
+      return 'Enter a valid email.';
+    }
+    if (rule === 'phone10' && value && value.length !== 10) {
+      return 'Exactly 10 digits for the selected country.';
+    }
+    if (rule === 'date' && value && !DATE_PATTERN.test(value)) {
+      return 'Enter a valid date (DD-MM-YYYY).';
+    }
+    if (rule === 'time' && value && !TIME_PATTERN.test(value)) {
+      return 'Enter a valid time (HH:MM).';
+    }
+  }
+  return undefined;
+}
+
 export function IntakeWizard({
   visible,
   theme,
   portals,
+  config,
   onClose,
   onSubmit,
 }: IntakeWizardProps) {
   const insets = useSafeAreaInsets();
+  const {dialog, showDialog, hideDialog} = useAppDialog();
+  const scrollRef = useRef<React.ElementRef<typeof ScrollView>>(null);
+  const fieldTops = useRef<Record<string, number>>({});
+  const cardTop = useRef(0);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [step, setStep] = useState(0);
-  const [draft, setDraft] = useState(DEFAULT_INTAKE);
+  const [draft, setDraft] = useState<IntakeDraft>({});
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
-  const portalOptions = useMemo(() => {
-    const source = portals.filter(portal => portal.status === 'active');
-    return (source.length ? source : portals).map(portal => portal.name);
-  }, [portals]);
+  const portalOptions = useMemo(
+    () => portals.map(portal => ({id: portal.id, label: portal.name})),
+    [portals],
+  );
 
   useEffect(() => {
     if (visible) {
       setStep(0);
-      setDraft(DEFAULT_INTAKE);
+      setDraft(createDraft(config, portals));
       setFieldErrors({});
     }
-  }, [visible]);
+  }, [visible, config, portals]);
 
   useEffect(() => {
-    if (!visible || draft.portalId || portals.length === 0) {
-      return;
-    }
-    const preferred =
-      portals.find(portal => portal.status === 'active') ?? portals[0];
-    setDraft(current => ({...current, portalId: preferred.id}));
-  }, [visible, draft.portalId, portals]);
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const show = Keyboard.addListener(showEvent, event => {
+      setKeyboardHeight(event.endCoordinates.height);
+    });
+    const hide = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0);
+    });
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
 
-  const update = <K extends keyof IntakeDraft>(key: K, value: IntakeDraft[K]) => {
+  useEffect(() => {
+    fieldTops.current = {};
+    scrollRef.current?.scrollTo({y: 0, animated: false});
+  }, [step]);
+
+  const scrollFieldIntoView = (fieldId: string) => {
+    const y = cardTop.current + (fieldTops.current[fieldId] ?? 0);
+    const delay = Platform.OS === 'android' ? 280 : 80;
+    setTimeout(() => {
+      scrollRef.current?.scrollTo({
+        y: Math.max(0, y - 16),
+        animated: true,
+      });
+    }, delay);
+  };
+
+  const update = (key: string, value: string) => {
     setDraft(current => ({...current, [key]: value}));
     setFieldErrors(current => {
       if (!current[key]) {
@@ -108,81 +212,53 @@ export function IntakeWizard({
     });
   };
 
-  const selectedPortalName =
-    portals.find(portal => portal.id === draft.portalId)?.name ?? '';
+  const defaults = useMemo(() => createDraft(config, portals), [config, portals]);
+  const isDirty = useMemo(
+    () =>
+      allFields(config).some(field => {
+        const current = draft[field.id] ?? '';
+        const initial = defaults[field.id] ?? '';
+        return current !== initial;
+      }),
+    [config, defaults, draft],
+  );
 
-  const isDirty = useMemo(() => isIntakeStarted(draft), [draft]);
+  const current = config.steps[step];
+  const isLast = step === config.steps.length - 1;
 
-  const validateStep = (index: number): FieldErrors => {
+  const validateStep = (target: IntakeStep): FieldErrors => {
     const next: FieldErrors = {};
-    if (index === 0) {
-      if (!draft.reportedBy) {
-        next.reportedBy = REQUIRED_MESSAGE;
+    target.fields.filter(field => isVisible(field, draft)).forEach(field => {
+      const error = validateField(field, draft[field.id] ?? '');
+      if (error) {
+        next[field.id] = error;
       }
-      if (!draft.driverType) {
-        next.driverType = REQUIRED_MESSAGE;
-      }
-      if (draft.callerEmail && !EMAIL_PATTERN.test(draft.callerEmail)) {
-        next.callerEmail = 'Enter a valid email.';
-      }
-      if (draft.callerPhone && draft.callerPhone.length !== 10) {
-        next.callerPhone = 'Exactly 10 digits for the selected country.';
-      }
-    }
-    if (index === 1) {
-      if (!draft.incidentDate) {
-        next.incidentDate = REQUIRED_MESSAGE;
-      } else if (!DATE_PATTERN.test(draft.incidentDate)) {
-        next.incidentDate = 'Enter a valid date (DD-MM-YYYY).';
-      }
-      if (!draft.incidentTime) {
-        next.incidentTime = REQUIRED_MESSAGE;
-      } else if (!TIME_PATTERN.test(draft.incidentTime)) {
-        next.incidentTime = 'Enter a valid time (HH:MM).';
-      }
-    }
-    if (index === 2 && !draft.claimType) {
-      next.claimType = REQUIRED_MESSAGE;
-    }
-    if (index === 3 && !draft.city.trim()) {
-      next.city = REQUIRED_MESSAGE;
-    }
-    if (index === 4) {
-      if (!draft.driverFirstName.trim()) {
-        next.driverFirstName = REQUIRED_MESSAGE;
-      }
-      if (draft.driverEmail && !EMAIL_PATTERN.test(draft.driverEmail)) {
-        next.driverEmail = 'Enter a valid email.';
-      }
-      if (draft.driverMobile && draft.driverMobile.length !== 10) {
-        next.driverMobile = 'Exactly 10 digits for the selected country.';
-      }
-      if (draft.hasCoDriver === 'Yes' && !draft.coDriverFirstName.trim()) {
-        next.coDriverFirstName = REQUIRED_MESSAGE;
-      }
-    }
+    });
     return next;
   };
 
   const goNext = () => {
-    const nextErrors = validateStep(step);
+    if (!current) {
+      return;
+    }
+    const nextErrors = validateStep(current);
     if (Object.keys(nextErrors).length > 0) {
       setFieldErrors(nextErrors);
       return;
     }
     setFieldErrors({});
-    if (step < INTAKE_STEPS.length - 1) {
-      setStep(current => current + 1);
+    if (!isLast) {
+      setStep(currentStep => currentStep + 1);
       return;
     }
-    Alert.alert(
-      'Submit this intake?',
-      'Double-check the reporter, incident, and driver details. You can still edit after the live API is connected.',
-      [
-        {text: 'Keep editing', style: 'cancel'},
-        {text: 'Submit', onPress: () => onSubmit(draft)},
+    showDialog({
+      title: config.submitTitle,
+      message: config.submitMessage,
+      buttons: [
+        {label: 'Keep editing'},
+        {label: 'Submit', tone: 'primary', onPress: () => onSubmit(draft)},
       ],
-    );
+    });
   };
 
   const requestClose = () => {
@@ -190,18 +266,21 @@ export function IntakeWizard({
       onClose();
       return;
     }
-    Alert.alert(
-      'Discard intake?',
-      'Your entries on this claim will be lost.',
-      [
-        {text: 'Keep editing', style: 'cancel'},
-        {text: 'Discard', style: 'destructive', onPress: onClose},
+    showDialog({
+      title: config.discardTitle,
+      message: config.discardMessage,
+      buttons: [
+        {label: 'Keep editing'},
+        {label: 'Discard', tone: 'destructive', onPress: onClose},
       ],
-    );
+    });
   };
 
-  const current = INTAKE_STEPS[step];
-  const isLast = step === INTAKE_STEPS.length - 1;
+  if (!current) {
+    return null;
+  }
+
+  const visibleFields = current.fields.filter(field => isVisible(field, draft));
 
   return (
     <Modal
@@ -209,13 +288,19 @@ export function IntakeWizard({
       animationType="slide"
       presentationStyle="fullScreen"
       onRequestClose={requestClose}>
-      <View style={[styles.root, {backgroundColor: theme.page}]}>
+      <KeyboardAvoidingView
+        style={[styles.root, {backgroundColor: theme.page}]}
+        behavior="padding"
+        enabled={Platform.OS === 'ios'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}>
+        <View
+          style={[
+            styles.root,
+            Platform.OS === 'android' ? {paddingBottom: keyboardHeight} : null,
+          ]}>
         <View style={{height: insets.top, backgroundColor: theme.page}} />
         <View style={styles.header}>
           <View>
-            <Text style={[styles.kicker, {color: theme.primary}]}>
-              New intake
-            </Text>
             <Text style={[styles.headerTitle, {color: theme.text}]}>
               {current.title}
             </Text>
@@ -224,7 +309,10 @@ export function IntakeWizard({
             onPress={requestClose}
             accessibilityRole="button"
             accessibilityLabel="Close intake"
-            style={[styles.close, {backgroundColor: theme.card, borderColor: theme.border}]}>
+            style={[
+              styles.close,
+              {backgroundColor: theme.card, borderColor: theme.border},
+            ]}>
             <CloseIcon color={theme.text} size={12} />
           </Pressable>
         </View>
@@ -235,13 +323,13 @@ export function IntakeWizard({
               styles.progressFill,
               {
                 backgroundColor: theme.primary,
-                width: `${((step + 1) / INTAKE_STEPS.length) * 100}%`,
+                width: `${((step + 1) / config.steps.length) * 100}%`,
               },
             ]}
           />
         </View>
         <View style={styles.stepper}>
-          {INTAKE_STEPS.map((item, index) => {
+          {config.steps.map((item, index) => {
             const active = index === step;
             const done = index < step;
             return (
@@ -288,15 +376,21 @@ export function IntakeWizard({
           })}
         </View>
 
-        <KeyboardAvoidingView
-          style={styles.flex}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <ScrollView
+            ref={scrollRef}
             style={styles.flex}
-            contentContainerStyle={styles.cardWrap}
+            contentContainerStyle={[
+              styles.cardWrap,
+              {paddingBottom: 28 + keyboardHeight},
+            ]}
             keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            automaticallyAdjustKeyboardInsets
             showsVerticalScrollIndicator={false}>
             <View
+              onLayout={event => {
+                cardTop.current = event.nativeEvent.layout.y;
+              }}
               style={[
                 styles.card,
                 {
@@ -306,63 +400,58 @@ export function IntakeWizard({
                 },
               ]}>
               <Text style={[styles.cardTitle, {color: theme.text}]}>
-                {current.title === 'Reporter'
-                  ? 'Reporter Information'
-                  : current.title === 'Timeline'
-                    ? 'Incident Timeline'
-                    : current.title === 'Incident'
-                      ? 'Incident Information'
-                      : current.title === 'Location'
-                        ? 'Incident location'
-                        : 'Involved Driver'}
+                {current.cardTitle}
               </Text>
               <Text style={[styles.cardSubtitle, {color: theme.textSecondary}]}>
-                {current.subtitle}. Fields marked * are required.
+                {current.subtitle}. {config.requiredHint}
               </Text>
 
-              {step === 0 ? (
-                <ReporterStep
+              {current.review ? (
+                <ReviewSummary
                   theme={theme}
                   draft={draft}
-                  errors={fieldErrors}
-                  portalName={selectedPortalName}
-                  portalOptions={portalOptions}
-                  portals={portals}
-                  onChange={update}
+                  title={current.review.title}
+                  hint={current.review.hint}
+                  rows={current.review.rows}
                 />
               ) : null}
-              {step === 1 ? (
-                <TimelineStep
-                  theme={theme}
-                  draft={draft}
-                  errors={fieldErrors}
-                  onChange={update}
-                />
-              ) : null}
-              {step === 2 ? (
-                <IncidentStep
-                  theme={theme}
-                  draft={draft}
-                  errors={fieldErrors}
-                  onChange={update}
-                />
-              ) : null}
-              {step === 3 ? (
-                <LocationStep
-                  theme={theme}
-                  draft={draft}
-                  errors={fieldErrors}
-                  onChange={update}
-                />
-              ) : null}
-              {step === 4 ? (
-                <DriverStep
-                  theme={theme}
-                  draft={draft}
-                  errors={fieldErrors}
-                  onChange={update}
-                />
-              ) : null}
+
+              {groupFields(visibleFields).map(group => {
+                const content = group.map(field => (
+                  <DynamicField
+                    key={field.id}
+                    theme={theme}
+                    field={field}
+                    value={draft[field.id] ?? ''}
+                    error={fieldErrors[field.id]}
+                    portalOptions={portalOptions}
+                    flex={group.length > 1}
+                    onChange={update}
+                    onFocus={() => scrollFieldIntoView(group[0].id)}
+                  />
+                ));
+
+                if (group.length > 1) {
+                  return (
+                    <View
+                      key={group.map(item => item.id).join('-')}
+                      onLayout={event => {
+                        fieldTops.current[group[0].id] = event.nativeEvent.layout.y;
+                      }}>
+                      <FieldRow>{content}</FieldRow>
+                    </View>
+                  );
+                }
+                return (
+                  <View
+                    key={group[0].id}
+                    onLayout={event => {
+                      fieldTops.current[group[0].id] = event.nativeEvent.layout.y;
+                    }}>
+                    {content}
+                  </View>
+                );
+              })}
             </View>
           </ScrollView>
 
@@ -377,7 +466,7 @@ export function IntakeWizard({
               },
             ]}>
             <Text style={[styles.footerMeta, {color: theme.textMuted}]}>
-              Step {step + 1} of {INTAKE_STEPS.length}
+              Step {step + 1} of {config.steps.length}
             </Text>
             <View style={styles.footerActions}>
               {step > 0 ? (
@@ -387,7 +476,7 @@ export function IntakeWizard({
                     setStep(currentStep => Math.max(0, currentStep - 1));
                   }}
                   accessibilityRole="button"
-                  accessibilityLabel="Previous"
+                  accessibilityLabel={config.previousLabel}
                   style={({pressed}) => [
                     styles.footerButton,
                     styles.footerSecondary,
@@ -399,14 +488,14 @@ export function IntakeWizard({
                   ]}>
                   <ChevronLeftIcon color={theme.text} size={9} />
                   <Text style={[styles.footerButtonText, {color: theme.text}]}>
-                    Previous
+                    {config.previousLabel}
                   </Text>
                 </Pressable>
               ) : null}
               <Pressable
                 onPress={goNext}
                 accessibilityRole="button"
-                accessibilityLabel={isLast ? 'Submit intake' : 'Next'}
+                accessibilityLabel={isLast ? config.submitLabel : config.nextLabel}
                 style={({pressed}) => [
                   styles.footerPrimaryWrap,
                   step === 0 && styles.footerPrimarySolo,
@@ -418,480 +507,144 @@ export function IntakeWizard({
                   end={{x: 1, y: 1}}
                   style={styles.footerPrimary}>
                   <Text style={[styles.footerButtonText, {color: theme.onPrimary}]}>
-                    {isLast ? 'Submit Intake' : 'Next'}
+                    {isLast ? config.submitLabel : config.nextLabel}
                   </Text>
                   {isLast ? null : <ChevronRightIcon color="#FFFFFF" size={9} />}
                 </LinearGradient>
               </Pressable>
             </View>
           </View>
-        </KeyboardAvoidingView>
-      </View>
+        </View>
+      </KeyboardAvoidingView>
+      <AppDialog
+        visible={dialog.visible}
+        theme={theme}
+        title={dialog.title}
+        message={dialog.message}
+        buttons={dialog.buttons}
+        onClose={hideDialog}
+      />
     </Modal>
   );
 }
 
-type StepProps = {
-  theme: ClaimPortalTheme;
-  draft: IntakeDraft;
-  errors: FieldErrors;
-  onChange: <K extends keyof IntakeDraft>(key: K, value: IntakeDraft[K]) => void;
-};
-
-function ReporterStep({
+function DynamicField({
   theme,
-  draft,
-  errors,
-  portalName,
+  field,
+  value,
+  error,
   portalOptions,
-  portals,
+  flex,
   onChange,
-}: StepProps & {
-  portalName: string;
-  portalOptions: string[];
-  portals: ClaimPortal[];
+  onFocus,
+}: {
+  theme: ClaimPortalTheme;
+  field: IntakeField;
+  value: string;
+  error?: string;
+  portalOptions: {id: string; label: string}[];
+  flex: boolean;
+  onChange: (id: string, value: string) => void;
+  onFocus?: () => void;
 }) {
-  return (
-    <View>
-      {portalOptions.length > 0 ? (
-        <SelectField
-          theme={theme}
-          label="Related portal"
-          error={errors.portalId}
-          value={portalName}
-          options={portalOptions}
-          onChange={name => {
-            const match = portals.find(portal => portal.name === name);
-            onChange('portalId', match?.id ?? '');
-          }}
-        />
-      ) : null}
+  const common = {
+    theme,
+    label: field.label,
+    required: field.required,
+    error,
+    hint: field.hint,
+    flex,
+    onFocus,
+  };
+
+  if (field.type === 'portal' || field.type === 'select') {
+    const options =
+      field.type === 'portal'
+        ? portalOptions
+        : field.options ?? [];
+    const selectedLabel =
+      options.find(option => option.id === value)?.label ?? '';
+    return (
       <SelectField
-        theme={theme}
-        label="Reported by"
-        required
-        error={errors.reportedBy}
-        value={draft.reportedBy}
-        options={INTAKE_OPTIONS.reportedBy}
-        onChange={value => onChange('reportedBy', value)}
+        {...common}
+        value={selectedLabel}
+        options={options.map(option => option.label)}
+        onChange={label => {
+          const match = options.find(option => option.label === label);
+          onChange(field.id, match?.id ?? '');
+        }}
       />
-      <SelectField
-        theme={theme}
-        label="Driver type"
-        required
-        error={errors.driverType}
-        value={draft.driverType}
-        options={INTAKE_OPTIONS.driverType}
-        onChange={value => onChange('driverType', value)}
+    );
+  }
+
+  if (field.type === 'textarea') {
+    return (
+      <TextAreaField
+        {...common}
+        value={value}
+        onChangeText={next => onChange(field.id, next)}
+        placeholder={field.placeholder}
       />
-      <FieldRow>
-        <TextField
-          theme={theme}
-          label="Caller title"
-          flex
-          value={draft.callerTitle}
-          onChangeText={value => onChange('callerTitle', value)}
-          placeholder="Dispatcher"
-        />
-        <TextField
-          theme={theme}
-          label="Caller name"
-          flex
-          value={draft.callerName}
-          onChangeText={value => onChange('callerName', value)}
-          placeholder="Full name"
-          autoCapitalize="words"
-        />
-      </FieldRow>
-      <TextField
-        theme={theme}
-        label="Caller email"
-        error={errors.callerEmail}
-        value={draft.callerEmail}
-        onChangeText={value => onChange('callerEmail', value)}
-        placeholder="name@example.com"
-        keyboardType="email-address"
-        autoCapitalize="none"
-      />
+    );
+  }
+
+  if (field.type === 'phone') {
+    return (
       <PhoneField
-        theme={theme}
-        label="Caller phone"
-        error={errors.callerPhone}
-        value={draft.callerPhone}
-        onChangeText={value => onChange('callerPhone', value)}
-        hint="Exactly 10 digits for the selected country."
+        {...common}
+        value={value}
+        onChangeText={next => onChange(field.id, next)}
       />
-    </View>
-  );
-}
-
-function formatDateInput(value: string): string {
-  const digits = value.replace(/\D/g, '').slice(0, 8);
-  if (digits.length <= 2) {
-    return digits;
+    );
   }
-  if (digits.length <= 4) {
-    return `${digits.slice(0, 2)}-${digits.slice(2)}`;
-  }
-  return `${digits.slice(0, 2)}-${digits.slice(2, 4)}-${digits.slice(4)}`;
-}
 
-function formatTimeInput(value: string): string {
-  const digits = value.replace(/\D/g, '').slice(0, 4);
-  if (digits.length <= 2) {
-    return digits;
-  }
-  return `${digits.slice(0, 2)}:${digits.slice(2)}`;
-}
+  const isDate = field.type === 'date';
+  const isTime = field.type === 'time';
+  const isEmail = field.type === 'email';
 
-function TimelineStep({theme, draft, errors, onChange}: StepProps) {
   return (
-    <View>
-      <FieldRow>
-        <TextField
-          theme={theme}
-          label="Date of incident"
-          required
-          flex
-          error={errors.incidentDate}
-          value={draft.incidentDate}
-          onChangeText={value => onChange('incidentDate', formatDateInput(value))}
-          placeholder="DD-MM-YYYY"
-          hint="Example: 04-09-2026"
-          keyboardType="number-pad"
-        />
-        <TextField
-          theme={theme}
-          label="Time of incident"
-          required
-          flex
-          error={errors.incidentTime}
-          value={draft.incidentTime}
-          onChangeText={value => onChange('incidentTime', formatTimeInput(value))}
-          placeholder="HH:MM"
-          hint="24-hour format"
-          keyboardType="number-pad"
-        />
-      </FieldRow>
-      <SelectField
-        theme={theme}
-        label="Time zone"
-        value={draft.timeZone}
-        options={INTAKE_OPTIONS.timeZone}
-        onChange={value => onChange('timeZone', value)}
-      />
-    </View>
-  );
-}
-
-function IncidentStep({theme, draft, errors, onChange}: StepProps) {
-  return (
-    <View>
-      <FieldRow>
-        <SelectField
-          theme={theme}
-          label="Claim type"
-          required
-          flex
-          error={errors.claimType}
-          value={draft.claimType}
-          options={INTAKE_OPTIONS.claimType}
-          onChange={value => onChange('claimType', value)}
-        />
-        <SelectField
-          theme={theme}
-          label="Issue type"
-          flex
-          value={draft.issueType}
-          options={INTAKE_OPTIONS.issueType}
-          onChange={value => onChange('issueType', value)}
-        />
-      </FieldRow>
-      <TextAreaField
-        theme={theme}
-        label="Customer delivery instructions"
-        value={draft.deliveryInstructions}
-        onChangeText={value => onChange('deliveryInstructions', value)}
-        placeholder="Gate codes, dock hours, contacts..."
-      />
-      <FieldRow>
-        <SelectField
-          theme={theme}
-          label="Loss type"
-          flex
-          value={draft.lossType}
-          options={INTAKE_OPTIONS.lossType}
-          onChange={value => onChange('lossType', value)}
-        />
-        <SelectField
-          theme={theme}
-          label="Roadway"
-          flex
-          value={draft.roadway}
-          options={INTAKE_OPTIONS.roadway}
-          onChange={value => onChange('roadway', value)}
-        />
-      </FieldRow>
-      <SelectField
-        theme={theme}
-        label="Weather"
-        value={draft.weather}
-        options={INTAKE_OPTIONS.weather}
-        onChange={value => onChange('weather', value)}
-      />
-      <FieldRow>
-        <SelectField
-          theme={theme}
-          label="Vehicles involved"
-          flex
-          value={draft.vehiclesInvolved}
-          options={INTAKE_OPTIONS.count}
-          onChange={value => onChange('vehiclesInvolved', value)}
-        />
-        <SelectField
-          theme={theme}
-          label="People involved"
-          flex
-          value={draft.peopleInvolved}
-          options={INTAKE_OPTIONS.count}
-          onChange={value => onChange('peopleInvolved', value)}
-        />
-      </FieldRow>
-      <SelectField
-        theme={theme}
-        label="Where did the incident occur?"
-        value={draft.incidentPlace}
-        options={INTAKE_OPTIONS.incidentPlace}
-        onChange={value => onChange('incidentPlace', value)}
-      />
-      <TextAreaField
-        theme={theme}
-        label="Accident details"
-        value={draft.accidentDetails}
-        onChangeText={value => onChange('accidentDetails', value)}
-        placeholder="Describe what happened..."
-      />
-      <TextAreaField
-        theme={theme}
-        label="Action items"
-        value={draft.actionItems}
-        onChangeText={value => onChange('actionItems', value)}
-        placeholder="Next steps, towing, notices..."
-      />
-    </View>
-  );
-}
-
-function LocationStep({theme, draft, errors, onChange}: StepProps) {
-  return (
-    <View>
-      <TextField
-        theme={theme}
-        label="Address lookup"
-        error={errors.addressLookup}
-        value={draft.addressLookup}
-        onChangeText={value => onChange('addressLookup', value)}
-        placeholder="Start typing an address"
-        hint="Use this if you have the full location handy."
-      />
-      <FieldRow>
-        <SelectField
-          theme={theme}
-          label="Region"
-          flex
-          value={draft.region}
-          options={INTAKE_OPTIONS.region}
-          onChange={value => onChange('region', value)}
-        />
-        <SelectField
-          theme={theme}
-          label="Country"
-          flex
-          value={draft.country}
-          options={INTAKE_OPTIONS.country}
-          onChange={value => onChange('country', value)}
-        />
-      </FieldRow>
-      <SelectField
-        theme={theme}
-        label="State"
-        value={draft.state}
-        options={INTAKE_OPTIONS.state}
-        onChange={value => onChange('state', value)}
-      />
-      <FieldRow>
-        <TextField
-          theme={theme}
-          label="City"
-          required
-          flex
-          error={errors.city}
-          value={draft.city}
-          onChangeText={value => onChange('city', value)}
-          placeholder="City"
-          autoCapitalize="words"
-        />
-        <TextField
-          theme={theme}
-          label="Zip"
-          flex
-          value={draft.zip}
-          onChangeText={value => onChange('zip', value)}
-          placeholder="ZIP"
-          keyboardType="number-pad"
-        />
-      </FieldRow>
-      <TextField
-        theme={theme}
-        label="Street / Address"
-        error={errors.street}
-        value={draft.street}
-        onChangeText={value => onChange('street', value)}
-        placeholder="Street address"
-      />
-      <FieldRow>
-        <TextField
-          theme={theme}
-          label="Contractor code"
-          flex
-          value={draft.contractorShortCode}
-          onChangeText={value => onChange('contractorShortCode', value)}
-          placeholder="Optional"
-          autoCapitalize="characters"
-        />
-        <TextField
-          theme={theme}
-          label="Station"
-          flex
-          value={draft.station}
-          onChangeText={value => onChange('station', value)}
-          placeholder="Optional"
-        />
-      </FieldRow>
-    </View>
-  );
-}
-
-function DriverStep({theme, draft, errors, onChange}: StepProps) {
-  return (
-    <View>
-      <ReviewSummary theme={theme} draft={draft} />
-      <FieldRow>
-        <TextField
-          theme={theme}
-          label="Driver ID"
-          flex
-          value={draft.driverId}
-          onChangeText={value => onChange('driverId', value)}
-          placeholder="ID"
-        />
-        <TextField
-          theme={theme}
-          label="VIN"
-          flex
-          value={draft.vin}
-          onChangeText={value => onChange('vin', value)}
-          placeholder="VIN"
-          autoCapitalize="characters"
-        />
-      </FieldRow>
-      <TextField
-        theme={theme}
-        label="Tracking number"
-        value={draft.trackingNumber}
-        onChangeText={value => onChange('trackingNumber', value)}
-        placeholder="Load or tracking number"
-      />
-      <FieldRow>
-        <TextField
-          theme={theme}
-          label="First name"
-          required
-          flex
-          error={errors.driverFirstName}
-          value={draft.driverFirstName}
-          onChangeText={value => onChange('driverFirstName', value)}
-          placeholder="First name"
-          autoCapitalize="words"
-        />
-        <TextField
-          theme={theme}
-          label="Last name"
-          flex
-          value={draft.driverLastName}
-          onChangeText={value => onChange('driverLastName', value)}
-          placeholder="Last name"
-          autoCapitalize="words"
-        />
-      </FieldRow>
-      <TextField
-        theme={theme}
-        label="Email"
-        error={errors.driverEmail}
-        value={draft.driverEmail}
-        onChangeText={value => onChange('driverEmail', value)}
-        placeholder="name@example.com"
-        keyboardType="email-address"
-        autoCapitalize="none"
-      />
-      <PhoneField
-        theme={theme}
-        label="Mobile"
-        error={errors.driverMobile}
-        value={draft.driverMobile}
-        onChangeText={value => onChange('driverMobile', value)}
-        hint="Exactly 10 digits for the selected country."
-      />
-      <SelectField
-        theme={theme}
-        label="Co-driver"
-        value={draft.hasCoDriver}
-        options={INTAKE_OPTIONS.hasCoDriver}
-        onChange={value => onChange('hasCoDriver', value)}
-      />
-      {draft.hasCoDriver === 'Yes' ? (
-        <FieldRow>
-          <TextField
-            theme={theme}
-            label="Co-driver first name"
-            required
-            flex
-            error={errors.coDriverFirstName}
-            value={draft.coDriverFirstName}
-            onChangeText={value => onChange('coDriverFirstName', value)}
-            placeholder="First name"
-            autoCapitalize="words"
-          />
-          <TextField
-            theme={theme}
-            label="Co-driver last name"
-            flex
-            value={draft.coDriverLastName}
-            onChangeText={value => onChange('coDriverLastName', value)}
-            placeholder="Last name"
-            autoCapitalize="words"
-          />
-        </FieldRow>
-      ) : null}
-    </View>
+    <TextField
+      {...common}
+      value={value}
+      onChangeText={next =>
+        onChange(
+          field.id,
+          isDate ? formatDateInput(next) : isTime ? formatTimeInput(next) : next,
+        )
+      }
+      placeholder={field.placeholder}
+      keyboardType={
+        isDate || isTime ? 'number-pad' : isEmail ? 'email-address' : 'default'
+      }
+      autoCapitalize={field.autoCapitalize ?? (isEmail ? 'none' : 'sentences')}
+    />
   );
 }
 
 function ReviewSummary({
   theme,
   draft,
+  title,
+  hint,
+  rows,
 }: {
   theme: ClaimPortalTheme;
   draft: IntakeDraft;
+  title: string;
+  hint: string;
+  rows: NonNullable<IntakeStep['review']>['rows'];
 }) {
-  const rows = [
-    {label: 'Reported by', value: draft.reportedBy},
-    {label: 'When', value: [draft.incidentDate, draft.incidentTime].filter(Boolean).join(' · ')},
-    {label: 'Claim', value: [draft.claimType, draft.issueType].filter(Boolean).join(' · ')},
-    {label: 'City', value: [draft.city, draft.state].filter(Boolean).join(', ')},
-  ].filter(row => row.value);
+  const visible = rows
+    .map(row => ({
+      ...row,
+      value: row.fieldIds
+        .map(id => draft[id])
+        .filter(Boolean)
+        .join(row.separator ?? ' · '),
+    }))
+    .filter(row => row.value);
 
-  if (rows.length === 0) {
+  if (visible.length === 0) {
     return null;
   }
 
@@ -901,12 +654,10 @@ function ReviewSummary({
         styles.review,
         {backgroundColor: theme.cardMuted, borderColor: theme.border},
       ]}>
-      <Text style={[styles.reviewTitle, {color: theme.text}]}>Quick review</Text>
-      <Text style={[styles.reviewHint, {color: theme.textMuted}]}>
-        Confirm these details, then add the driver and submit.
-      </Text>
-      {rows.map(row => (
-        <View key={row.label} style={styles.reviewRow}>
+      <Text style={[styles.reviewTitle, {color: theme.text}]}>{title}</Text>
+      <Text style={[styles.reviewHint, {color: theme.textMuted}]}>{hint}</Text>
+      {visible.map(row => (
+        <View key={row.id} style={styles.reviewRow}>
           <Text style={[styles.reviewLabel, {color: theme.textMuted}]}>
             {row.label}
           </Text>
@@ -933,16 +684,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  kicker: {
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 0.4,
-    textTransform: 'uppercase',
-  },
   headerTitle: {
-    marginTop: 2,
-    fontSize: 24,
-    fontWeight: '800',
+    fontSize: 20,
+    fontWeight: '700',
   },
   close: {
     width: 38,

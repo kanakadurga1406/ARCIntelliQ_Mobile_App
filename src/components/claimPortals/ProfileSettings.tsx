@@ -1,6 +1,5 @@
 import React, {useMemo, useState} from 'react';
 import {
-  Alert,
   Pressable,
   ScrollView,
   Share,
@@ -13,36 +12,17 @@ import {
 } from 'react-native';
 import type {ClaimHandlerUser, UserRole} from '../../types/auth';
 import type {ProfileField} from '../../types/claimPortals';
+import type {ProfilePage, ProfileRow, ProfileValueFrom} from '../../types/profile';
 import type {ClaimPortalTheme} from '../../theme/claimPortals';
 import {getAvatarColor, getInitials} from '../../theme/claimPortals';
-import {
-  BellMiniIcon,
-  BuildingIcon,
-  ChevronRightIcon,
-  GlobeMiniIcon,
-  LogoutMiniIcon,
-  MailMiniIcon,
-  MoonIcon,
-  PencilMiniIcon,
-  ShieldMiniIcon,
-  SunIcon,
-} from './ClaimPortalsIcons';
-
-const APP_VERSION = '0.0.1';
-const ORGANIZATION = 'ARC Global Risk';
-const WORKSPACE = 'ARCintelliQ Claim Portals';
-
-const BUILTIN_FIELD_IDS = new Set([
-  'handler-id',
-  'email',
-  'name',
-  'organization',
-  'workspace',
-]);
+import {AppDialog, useAppDialog} from './AppDialog';
+import {ChevronRightIcon, LogoutMiniIcon, MoonIcon, PencilMiniIcon, SunIcon} from './ClaimPortalsIcons';
+import {getToneColors, UiIcon} from './UiIcon';
 
 type ProfileSettingsProps = {
   theme: ClaimPortalTheme;
   user: ClaimHandlerUser;
+  page: ProfilePage;
   extraFields?: ProfileField[];
   onToggleTheme: () => void;
   onSignOut: () => void;
@@ -58,23 +38,61 @@ function formatRole(role: UserRole): string {
   return 'Contractor';
 }
 
+function resolveValue(
+  from: ProfileValueFrom | undefined,
+  fallback: string | undefined,
+  user: ClaimHandlerUser,
+  fields: ProfileField[],
+): string | undefined {
+  if (!from) {
+    return fallback;
+  }
+  if (from === 'user.email') {
+    return user.email;
+  }
+  if (from === 'user.name') {
+    return user.name;
+  }
+  if (from === 'user.title') {
+    return user.title;
+  }
+  if (from === 'user.id') {
+    return user.id.toUpperCase();
+  }
+  if (from === 'user.role') {
+    return formatRole(user.role);
+  }
+  if (from.startsWith('field:')) {
+    const id = from.slice(6);
+    return fields.find(field => field.id === id)?.value ?? fallback;
+  }
+  return fallback;
+}
+
 export function ProfileSettings({
   theme,
   user,
+  page,
   extraFields = [],
   onToggleTheme,
   onSignOut,
 }: ProfileSettingsProps) {
-  const [notifyClaims, setNotifyClaims] = useState(true);
+  const [toggles, setToggles] = useState<Record<string, boolean>>({});
+  const {dialog, showDialog, hideDialog} = useAppDialog();
   const isDark = theme.scheme === 'dark';
-  const roleLabel = formatRole(user.role);
-  const handlerId =
-    extraFields.find(field => field.id === 'handler-id')?.value ??
-    user.id.toUpperCase();
-  const assignmentFields = useMemo(
-    () => extraFields.filter(field => !BUILTIN_FIELD_IDS.has(field.id)),
-    [extraFields],
-  );
+  const fields = extraFields.length > 0 ? extraFields : page.fields;
+  const referencedFieldIds = useMemo(() => {
+    const ids = new Set<string>();
+    page.sections.forEach(section => {
+      section.rows.forEach(row => {
+        if (row.valueFrom?.startsWith('field:')) {
+          ids.add(row.valueFrom.slice(6));
+        }
+      });
+    });
+    return ids;
+  }, [page.sections]);
+  const leftoverFields = fields.filter(field => !referencedFieldIds.has(field.id));
 
   const shareEmail = async () => {
     try {
@@ -83,15 +101,39 @@ export function ProfileSettings({
         message: user.email,
       });
     } catch {
-      Alert.alert('Email', user.email);
+      showDialog({title: 'Email', message: user.email});
     }
   };
 
-  const comingSoon = (title: string, message: string) => {
-    Alert.alert(title, message);
+  const handleRow = (row: ProfileRow) => {
+    const destination = row.destination;
+    if (destination === 'sign-out') {
+      onSignOut();
+      return;
+    }
+    if (destination === 'toggle-theme') {
+      onToggleTheme();
+      return;
+    }
+    if (destination === 'toggle-alerts') {
+      setToggles(current => ({
+        ...current,
+        [row.id]: !(current[row.id] ?? row.defaultOn ?? false),
+      }));
+      return;
+    }
+    if (destination === 'share-email') {
+      shareEmail();
+      return;
+    }
+    showDialog({
+      title: row.label,
+      message: row.message || 'This option will connect when the live API is ready.',
+    });
   };
 
   return (
+    <>
     <ScrollView
       style={styles.scroll}
       showsVerticalScrollIndicator={false}
@@ -119,33 +161,31 @@ export function ProfileSettings({
           {user.title}
         </Text>
         <View style={styles.pills}>
-          <View
-            style={[
-              styles.pill,
-              {backgroundColor: theme.successSoft, borderColor: theme.border},
-            ]}>
-            <View style={[styles.statusDot, {backgroundColor: theme.success}]} />
-            <Text style={[styles.pillText, {color: theme.success}]}>Active</Text>
-          </View>
-          <View
-            style={[
-              styles.pill,
-              {
-                backgroundColor: isDark ? theme.cardMuted : '#E8F1FF',
-                borderColor: theme.border,
-              },
-            ]}>
-            <Text style={[styles.pillText, {color: theme.primary}]}>
-              {roleLabel}
-            </Text>
-          </View>
+          {page.badges.map(badge => {
+            const tone = getToneColors(theme, badge.tone);
+            return (
+              <View
+                key={badge.id}
+                style={[
+                  styles.pill,
+                  {backgroundColor: tone.bg, borderColor: theme.border},
+                ]}>
+                {badge.tone === 'success' ? (
+                  <View style={[styles.statusDot, {backgroundColor: tone.fg}]} />
+                ) : null}
+                <Text style={[styles.pillText, {color: tone.fg}]}>
+                  {badge.id === 'role' ? formatRole(user.role) : badge.label}
+                </Text>
+              </View>
+            );
+          })}
         </View>
         <Pressable
           onPress={() =>
-            comingSoon(
-              'Edit profile',
-              'Name, title, and contact details will be editable when the identity service is connected.',
-            )
+            showDialog({
+              title: page.editTitle,
+              message: page.editMessage,
+            })
           }
           accessibilityRole="button"
           accessibilityLabel="Edit profile"
@@ -159,171 +199,131 @@ export function ProfileSettings({
           ]}>
           <PencilMiniIcon color={theme.text} size={13} />
           <Text style={[styles.editText, {color: theme.text}]}>
-            Edit profile
+            {page.editLabel}
           </Text>
         </Pressable>
       </View>
 
-      <SectionLabel theme={theme} label="Account" />
-      <Group theme={theme}>
-        <SettingsRow
-          theme={theme}
-          icon={<MailMiniIcon color={theme.primary} size={15} />}
-          iconBg={isDark ? theme.cardMuted : '#E8F1FF'}
-          label="Email"
-          value={user.email}
-          onPress={shareEmail}
-        />
-        <SettingsRow
-          theme={theme}
-          icon={<ShieldMiniIcon color={theme.purple} size={15} />}
-          iconBg={theme.purpleSoft}
-          label="Handler ID"
-          value={handlerId}
-        />
-        {assignmentFields.map(field => (
-          <SettingsRow
-            key={field.id}
+      {page.sections.map(section => (
+        <View key={section.id}>
+          {section.title ? (
+            <SectionLabel theme={theme} label={section.title} />
+          ) : null}
+          <Group
             theme={theme}
-            icon={<GlobeMiniIcon color={theme.success} size={15} />}
-            iconBg={theme.successSoft}
-            label={field.label || 'Detail'}
-            value={field.value}
-          />
-        ))}
-        <SettingsRow
-          theme={theme}
-          icon={<BuildingIcon color={theme.orange} size={15} />}
-          iconBg={theme.warningSoft}
-          label="Organization"
-          value={ORGANIZATION}
-        />
-        <SettingsRow
-          theme={theme}
-          icon={<GlobeMiniIcon color={theme.primary} size={15} />}
-          iconBg={isDark ? theme.cardMuted : '#E8F1FF'}
-          label="Workspace"
-          value={WORKSPACE}
-          last
-        />
-      </Group>
+            style={!section.title ? styles.signOutGroup : undefined}>
+            {section.rows.map((row, index) => {
+              const last = index === section.rows.length - 1;
+              const tone = getToneColors(theme, row.tone);
+              const value = resolveValue(row.valueFrom, row.value, user, fields);
+              if (row.kind === 'sign-out') {
+                return (
+                  <Pressable
+                    key={row.id}
+                    onPress={() => handleRow(row)}
+                    accessibilityRole="button"
+                    accessibilityLabel={row.label}
+                    style={({pressed}) => [
+                      styles.signOutRow,
+                      pressed && {backgroundColor: theme.dangerSoft},
+                    ]}>
+                    <LogoutMiniIcon color={theme.danger} size={16} />
+                    <Text style={[styles.signOutText, {color: theme.danger}]}>
+                      {row.label}
+                    </Text>
+                  </Pressable>
+                );
+              }
+              if (row.kind === 'toggle') {
+                const on =
+                  row.destination === 'toggle-theme'
+                    ? isDark
+                    : toggles[row.id] ?? row.defaultOn ?? false;
+                return (
+                  <SwitchRow
+                    key={row.id}
+                    theme={theme}
+                    icon={
+                      row.destination === 'toggle-theme' ? (
+                        isDark ? (
+                          <MoonIcon
+                            color={theme.primary}
+                            size={15}
+                            cutColor={theme.cardMuted}
+                          />
+                        ) : (
+                          <SunIcon color={theme.gold} size={15} />
+                        )
+                      ) : (
+                        <UiIcon name={row.icon} color={tone.fg} size={15} />
+                      )
+                    }
+                    iconBg={tone.bg}
+                    label={row.label}
+                    hint={
+                      row.destination === 'toggle-theme'
+                        ? isDark
+                          ? 'On · easier on the eyes'
+                          : 'Off · light workspace'
+                        : row.hint || ''
+                    }
+                    value={on}
+                    last={last}
+                    onValueChange={() => handleRow(row)}
+                  />
+                );
+              }
+              return (
+                <SettingsRow
+                  key={row.id}
+                  theme={theme}
+                  icon={<UiIcon name={row.icon} color={tone.fg} size={15} />}
+                  iconBg={tone.bg}
+                  label={row.label}
+                  value={value}
+                  last={last}
+                  onPress={
+                    row.kind === 'action' ? () => handleRow(row) : undefined
+                  }
+                />
+              );
+            })}
+          </Group>
+        </View>
+      ))}
 
-      <SectionLabel theme={theme} label="Preferences" />
-      <Group theme={theme}>
-        <SwitchRow
-          theme={theme}
-          icon={
-            isDark ? (
-              <MoonIcon
-                color={theme.primary}
-                size={15}
-                cutColor={theme.cardMuted}
+      {leftoverFields.length > 0 ? (
+        <>
+          <SectionLabel theme={theme} label="More details" />
+          <Group theme={theme}>
+            {leftoverFields.map((field, index) => (
+              <SettingsRow
+                key={field.id}
+                theme={theme}
+                icon={<UiIcon name="globe" color={theme.success} size={15} />}
+                iconBg={theme.successSoft}
+                label={field.label || 'Detail'}
+                value={field.value}
+                last={index === leftoverFields.length - 1}
               />
-            ) : (
-              <SunIcon color={theme.gold} size={15} />
-            )
-          }
-          iconBg={isDark ? theme.cardMuted : theme.goldSoft}
-          label="Dark mode"
-          hint={isDark ? 'On · easier on the eyes' : 'Off · light workspace'}
-          value={isDark}
-          onValueChange={onToggleTheme}
-        />
-        <SwitchRow
-          theme={theme}
-          icon={<BellMiniIcon color={theme.success} size={15} />}
-          iconBg={theme.successSoft}
-          label="Claim alerts"
-          hint="New assignments and portal updates"
-          value={notifyClaims}
-          onValueChange={setNotifyClaims}
-          last
-        />
-      </Group>
-
-      <SectionLabel theme={theme} label="Security" />
-      <Group theme={theme}>
-        <SettingsRow
-          theme={theme}
-          icon={<PencilMiniIcon color={theme.text} size={15} />}
-          iconBg={theme.chip}
-          label="Change password"
-          value="Admin managed"
-          onPress={() =>
-            comingSoon(
-              'Change password',
-              'Password updates will connect to the live identity service later.',
-            )
-          }
-        />
-        <SettingsRow
-          theme={theme}
-          icon={<ShieldMiniIcon color={theme.primary} size={15} />}
-          iconBg={isDark ? theme.cardMuted : '#E8F1FF'}
-          label="Signed in"
-          value="This device"
-          last
-        />
-      </Group>
-
-      <SectionLabel theme={theme} label="Support" />
-      <Group theme={theme}>
-        <SettingsRow
-          theme={theme}
-          icon={<MailMiniIcon color={theme.primary} size={15} />}
-          iconBg={isDark ? theme.cardMuted : '#E8F1FF'}
-          label="Help & support"
-          onPress={() =>
-            comingSoon(
-              'Help & support',
-              'Contact your ARC Global Risk administrator or email support@arcintelliq.com.',
-            )
-          }
-        />
-        <SettingsRow
-          theme={theme}
-          icon={<GlobeMiniIcon color={theme.textSecondary} size={15} />}
-          iconBg={theme.chip}
-          label="Privacy & terms"
-          onPress={() =>
-            comingSoon(
-              'Privacy & terms',
-              'Legal documents will open from the live portal when they are connected.',
-            )
-          }
-        />
-        <SettingsRow
-          theme={theme}
-          icon={<BuildingIcon color={theme.textSecondary} size={15} />}
-          iconBg={theme.chip}
-          label="About"
-          value={`Version ${APP_VERSION}`}
-          last
-        />
-      </Group>
-
-      <Group theme={theme} style={styles.signOutGroup}>
-        <Pressable
-          onPress={onSignOut}
-          accessibilityRole="button"
-          accessibilityLabel="Sign out"
-          style={({pressed}) => [
-            styles.signOutRow,
-            pressed && {backgroundColor: theme.dangerSoft},
-          ]}>
-          <LogoutMiniIcon color={theme.danger} size={16} />
-          <Text style={[styles.signOutText, {color: theme.danger}]}>
-            Sign out
-          </Text>
-        </Pressable>
-      </Group>
+            ))}
+          </Group>
+        </>
+      ) : null}
 
       <Text style={[styles.footer, {color: theme.textMuted}]}>
-        {ORGANIZATION}
-        {'\n'}
-        {WORKSPACE}
+        {page.footerLines.join('\n')}
       </Text>
     </ScrollView>
+    <AppDialog
+      visible={dialog.visible}
+      theme={theme}
+      title={dialog.title}
+      message={dialog.message}
+      buttons={dialog.buttons}
+      onClose={hideDialog}
+    />
+    </>
   );
 }
 
@@ -506,9 +506,9 @@ const styles = StyleSheet.create({
   },
   name: {
     marginTop: 14,
-    fontSize: 22,
-    lineHeight: 28,
-    fontWeight: '800',
+    fontSize: 18,
+    lineHeight: 22,
+    fontWeight: '700',
     textAlign: 'center',
   },
   jobTitle: {

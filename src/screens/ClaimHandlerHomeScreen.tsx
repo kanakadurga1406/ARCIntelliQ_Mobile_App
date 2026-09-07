@@ -51,9 +51,9 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   title: {
-    fontSize: 28,
-    lineHeight: 34,
-    fontWeight: '800',
+    fontSize: 20,
+    lineHeight: 24,
+    fontWeight: '700',
     color: colors.textPrimary,
   },
   subtitle: {

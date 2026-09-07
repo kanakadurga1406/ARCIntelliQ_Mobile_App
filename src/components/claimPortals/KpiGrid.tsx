@@ -145,9 +145,9 @@ const styles = StyleSheet.create({
   },
   value: {
     marginTop: 4,
-    fontSize: 24,
-    lineHeight: 28,
-    fontWeight: '800',
+    fontSize: 20,
+    lineHeight: 24,
+    fontWeight: '700',
   },
   trend: {
     marginTop: 4,

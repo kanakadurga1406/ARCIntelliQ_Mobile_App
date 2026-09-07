@@ -1,7 +1,6 @@
 import React, {useEffect, useMemo, useState} from 'react';
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -18,6 +17,7 @@ import {
   askSmartSearch,
   fetchSmartSearchConfig,
 } from '../api/smartSearch';
+import {AppDialog, useAppDialog} from '../components/claimPortals/AppDialog';
 import {
   ChevronDownIcon,
   CloseIcon,
@@ -71,6 +71,7 @@ const SmartSearchScreen = ({navigation, route}: SmartSearchScreenProps) => {
   const [isAsking, setIsAsking] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [picker, setPicker] = useState<PickerState>(null);
+  const {dialog, showDialog, hideDialog} = useAppDialog();
 
   useEffect(() => {
     let cancelled = false;
@@ -183,14 +184,19 @@ const SmartSearchScreen = ({navigation, route}: SmartSearchScreenProps) => {
         modeId: activeMode.id,
         filters,
       });
-      Alert.alert(copy.title, result.message, [
-        {text: 'OK', onPress: () => navigation.goBack()},
-      ]);
+      showDialog({
+        title: copy.title,
+        message: result.message,
+        buttons: [
+          {label: 'OK', tone: 'primary', onPress: () => navigation.goBack()},
+        ],
+      });
     } catch (error) {
-      Alert.alert(
-        copy.title,
-        error instanceof Error ? error.message : 'Unable to apply search.',
-      );
+      showDialog({
+        title: copy.title,
+        message:
+          error instanceof Error ? error.message : 'Unable to apply search.',
+      });
     } finally {
       setIsApplying(false);
     }
@@ -240,10 +246,10 @@ const SmartSearchScreen = ({navigation, route}: SmartSearchScreenProps) => {
     setIsListening(true);
     setTimeout(() => {
       setIsListening(false);
-      Alert.alert(
-        copy?.title || 'Smart Search',
-        'Voice search will connect when the live API is ready.',
-      );
+      showDialog({
+        title: copy?.title || 'Smart Search',
+        message: 'Voice search will connect when the live API is ready.',
+      });
     }, 1800);
   };
 
@@ -632,6 +638,15 @@ const SmartSearchScreen = ({navigation, route}: SmartSearchScreenProps) => {
           updateFilter(picker.filterId, {value: option.id});
         }}
       />
+
+      <AppDialog
+        visible={dialog.visible}
+        theme={theme}
+        title={dialog.title}
+        message={dialog.message}
+        buttons={dialog.buttons}
+        onClose={hideDialog}
+      />
     </View>
   );
 };
@@ -684,9 +699,9 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   title: {
-    fontSize: 28,
-    lineHeight: 34,
-    fontWeight: '800',
+    fontSize: 20,
+    lineHeight: 24,
+    fontWeight: '700',
   },
   close: {
     width: 36,
