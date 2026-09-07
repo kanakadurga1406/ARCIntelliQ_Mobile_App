@@ -195,7 +195,6 @@ type ProfileTabProps = {
   user: ClaimHandlerUser;
   page: ProfilePage;
   extraFields: ProfileField[];
-  onToggleTheme: () => void;
   onSignOut: () => void;
 };
 
@@ -204,7 +203,6 @@ export function ProfileTabBody({
   user,
   page,
   extraFields,
-  onToggleTheme,
   onSignOut,
 }: ProfileTabProps) {
   return (
@@ -213,7 +211,6 @@ export function ProfileTabBody({
       user={user}
       page={page}
       extraFields={extraFields}
-      onToggleTheme={onToggleTheme}
       onSignOut={onSignOut}
     />
   );

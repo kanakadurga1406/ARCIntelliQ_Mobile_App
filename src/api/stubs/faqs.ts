@@ -26,12 +26,6 @@ export const FAQS: FaqItem[] = [
       'Tap the plus button on the bottom bar or choose Add Claim from the side menu. Select a portal, enter the claim title, and save. Live submit to the server will be connected when the backend is ready.',
   },
   {
-    id: 'theme',
-    question: 'How do I switch light and dark mode?',
-    answer:
-      'Tap the sun or moon button in the top-right header. Your theme applies across Home, Claim Portals, Dashboard, Profile, and this FAQs page for the current session.',
-  },
-  {
     id: 'profile',
     question: 'How do I sign out?',
     answer:

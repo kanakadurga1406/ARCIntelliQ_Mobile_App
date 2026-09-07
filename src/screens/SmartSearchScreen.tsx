@@ -20,9 +20,13 @@ import {
 import {AppDialog, useAppDialog} from '../components/claimPortals/AppDialog';
 import {
   ChevronDownIcon,
-  CloseIcon,
+  ChevronRightIcon,
 } from '../components/claimPortals/ClaimPortalsIcons';
 import {UiIcon} from '../components/claimPortals/UiIcon';
+import {
+  DatePicker,
+  formatSearchDate,
+} from '../components/smartSearch/DatePicker';
 import {OptionPicker} from '../components/smartSearch/OptionPicker';
 import {getClaimPortalTheme} from '../theme/claimPortals';
 import type {
@@ -53,12 +57,9 @@ function nextId(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
-const SmartSearchScreen = ({navigation, route}: SmartSearchScreenProps) => {
+const SmartSearchScreen = ({navigation}: SmartSearchScreenProps) => {
   const insets = useSafeAreaInsets();
-  const theme = useMemo(
-    () => getClaimPortalTheme(route.params.scheme),
-    [route.params.scheme],
-  );
+  const theme = useMemo(() => getClaimPortalTheme('light'), []);
 
   const [config, setConfig] = useState<SmartSearchConfig | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -71,6 +72,7 @@ const SmartSearchScreen = ({navigation, route}: SmartSearchScreenProps) => {
   const [isAsking, setIsAsking] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [picker, setPicker] = useState<PickerState>(null);
+  const [datePickerId, setDatePickerId] = useState<string | null>(null);
   const {dialog, showDialog, hideDialog} = useAppDialog();
 
   useEffect(() => {
@@ -120,6 +122,10 @@ const SmartSearchScreen = ({navigation, route}: SmartSearchScreenProps) => {
   const pickerField = activeMode?.fields?.find(
     item => item.id === pickerFilter?.fieldId,
   );
+  const dateFilter = filters.find(item => item.id === datePickerId);
+  const dateField = activeMode?.fields?.find(
+    item => item.id === dateFilter?.fieldId,
+  );
 
   const pickerOptions: SearchOption[] = useMemo(() => {
     if (!activeMode || !picker) {
@@ -143,6 +149,7 @@ const SmartSearchScreen = ({navigation, route}: SmartSearchScreenProps) => {
   const switchMode = (mode: SmartSearchMode) => {
     setModeId(mode.id);
     setPicker(null);
+    setDatePickerId(null);
     if (mode.kind === 'filters') {
       setFilters([createFilter(mode.fields)]);
       return;
@@ -322,15 +329,21 @@ const SmartSearchScreen = ({navigation, route}: SmartSearchScreenProps) => {
               mutedColor={theme.textMuted}
               onPress={() => setPicker({filterId: filter.id, kind: 'value'})}
             />
+          ) : field?.type === 'date' ? (
+            <DropdownButton
+              themeColor={theme.text}
+              borderColor={theme.border}
+              fill={theme.input}
+              label={formatSearchDate(filter.value) || 'Select date'}
+              muted={!filter.value}
+              mutedColor={theme.textMuted}
+              onPress={() => setDatePickerId(filter.id)}
+            />
           ) : (
             <TextInput
               value={filter.value}
               onChangeText={value => updateFilter(filter.id, {value})}
-              placeholder={
-                field?.type === 'date'
-                  ? 'YYYY-MM-DD'
-                  : copy?.valuePlaceholder
-              }
+              placeholder={copy?.valuePlaceholder}
               placeholderTextColor={theme.textMuted}
               keyboardType={field?.type === 'number' ? 'numeric' : 'default'}
               style={[
@@ -354,23 +367,28 @@ const SmartSearchScreen = ({navigation, route}: SmartSearchScreenProps) => {
 
   return (
     <View style={[styles.root, {backgroundColor: theme.page}]}>
-      <StatusBar
-        barStyle={theme.scheme === 'dark' ? 'light-content' : 'dark-content'}
-      />
+      <StatusBar barStyle="dark-content" />
       <View style={{height: insets.top, backgroundColor: theme.page}} />
 
       <View style={styles.header}>
-        <Text style={[styles.title, {color: theme.text}]}>
-          {copy?.title || 'Smart Search'}
-        </Text>
         <Pressable
           onPress={() => navigation.goBack()}
           accessibilityRole="button"
-          accessibilityLabel="Close Smart Search"
+          accessibilityLabel="Back"
           hitSlop={8}
-          style={styles.close}>
-          <CloseIcon color={theme.text} size={14} />
+          style={({pressed}) => [
+            styles.iconButton,
+            {backgroundColor: theme.card, borderColor: theme.border},
+            pressed && {opacity: 0.8},
+          ]}>
+          <View style={styles.backChevron}>
+            <ChevronRightIcon color={theme.text} size={9} />
+          </View>
         </Pressable>
+        <Text style={[styles.title, {color: theme.text}]}>
+          {copy?.title || 'Smart Search'}
+        </Text>
+        <View style={styles.headerSpacer} />
       </View>
 
       {isLoading ? (
@@ -600,6 +618,19 @@ const SmartSearchScreen = ({navigation, route}: SmartSearchScreenProps) => {
         </KeyboardAvoidingView>
       ) : null}
 
+      <DatePicker
+        visible={Boolean(datePickerId)}
+        theme={theme}
+        title={dateField?.label || 'Select date'}
+        value={dateFilter?.value}
+        onClose={() => setDatePickerId(null)}
+        onSelect={next => {
+          if (datePickerId) {
+            updateFilter(datePickerId, {value: next});
+          }
+        }}
+      />
+
       <OptionPicker
         visible={Boolean(picker)}
         title={
@@ -694,20 +725,30 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingBottom: 12,
+    paddingHorizontal: 16,
+    paddingBottom: 10,
   },
-  title: {
-    fontSize: 20,
-    lineHeight: 24,
-    fontWeight: '700',
-  },
-  close: {
-    width: 36,
-    height: 36,
+  iconButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  backChevron: {
+    transform: [{rotate: '180deg'}],
+    marginRight: 2,
+  },
+  title: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: 17,
+    lineHeight: 22,
+    fontWeight: '800',
+  },
+  headerSpacer: {
+    width: 38,
   },
   centered: {
     paddingTop: 40,

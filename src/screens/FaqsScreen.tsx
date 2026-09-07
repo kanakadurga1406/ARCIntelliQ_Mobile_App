@@ -15,12 +15,9 @@ import {getClaimPortalTheme} from '../theme/claimPortals';
 import type {FaqItem} from '../types/claimPortals';
 import type {FaqsScreenProps} from '../types/navigation';
 
-const FaqsScreen = ({navigation, route}: FaqsScreenProps) => {
+const FaqsScreen = ({navigation}: FaqsScreenProps) => {
   const insets = useSafeAreaInsets();
-  const theme = useMemo(
-    () => getClaimPortalTheme(route.params.scheme),
-    [route.params.scheme],
-  );
+  const theme = useMemo(() => getClaimPortalTheme('light'), []);
   const [faqs, setFaqs] = useState<FaqItem[]>([]);
   const [openId, setOpenId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -62,9 +59,7 @@ const FaqsScreen = ({navigation, route}: FaqsScreenProps) => {
 
   return (
     <View style={[styles.root, {backgroundColor: theme.page}]}>
-      <StatusBar
-        barStyle={theme.scheme === 'dark' ? 'light-content' : 'dark-content'}
-      />
+      <StatusBar barStyle="dark-content" />
       <View style={{height: insets.top, backgroundColor: theme.page}} />
       <View style={styles.header}>
         <Pressable
