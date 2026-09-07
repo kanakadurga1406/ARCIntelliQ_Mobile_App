@@ -1,4 +1,4 @@
-import React, {useEffect, useMemo, useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import {Modal, Pressable, StyleSheet, Text, View} from 'react-native';
 import type {ClaimPortalTheme} from '../../theme/claimPortals';
 import {ChevronLeftIcon, ChevronRightIcon} from '../claimPortals/ClaimPortalsIcons';
@@ -66,12 +66,14 @@ export function DatePicker({
   onClose,
   onSelect,
 }: DatePickerProps) {
-  const selected = useMemo(() => (value ? parseIsoDate(value) : null), [value]);
   const [cursor, setCursor] = useState(() => parseIsoDate(value));
+  const [draft, setDraft] = useState(() => toIsoDate(parseIsoDate(value)));
 
   useEffect(() => {
     if (visible) {
-      setCursor(parseIsoDate(value));
+      const next = parseIsoDate(value);
+      setCursor(next);
+      setDraft(value && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : '');
     }
   }, [visible, value]);
 
@@ -91,6 +93,14 @@ export function DatePicker({
     setCursor(current => new Date(current.getFullYear(), current.getMonth() + delta, 1));
   };
 
+  const apply = () => {
+    if (!draft) {
+      return;
+    }
+    onSelect(draft);
+    onClose();
+  };
+
   return (
     <Modal
       visible={visible}
@@ -106,10 +116,18 @@ export function DatePicker({
         />
         <View
           style={[
-            styles.sheet,
-            {backgroundColor: theme.sheet, borderColor: theme.border},
+            styles.card,
+            {
+              backgroundColor: theme.sheet,
+              borderColor: theme.border,
+              shadowColor: theme.shadow,
+            },
           ]}>
           <Text style={[styles.title, {color: theme.text}]}>{title}</Text>
+          <Text style={[styles.chosen, {color: theme.primary}]}>
+            {draft ? formatSearchDate(draft) : 'Select a day'}
+          </Text>
+
           <View style={styles.monthRow}>
             <Pressable
               onPress={() => shiftMonth(-1)}
@@ -131,6 +149,7 @@ export function DatePicker({
               <ChevronRightIcon color={theme.text} size={9} />
             </Pressable>
           </View>
+
           <View style={styles.weekRow}>
             {WEEKDAYS.map(day => (
               <Text key={day} style={[styles.weekday, {color: theme.textMuted}]}>
@@ -138,35 +157,62 @@ export function DatePicker({
               </Text>
             ))}
           </View>
+
           <View style={styles.grid}>
             {cells.map((day, index) => {
               if (!day) {
                 return <View key={`empty-${index}`} style={styles.dayCell} />;
               }
               const iso = toIsoDate(new Date(year, month, day));
-              const isSelected = selected ? toIsoDate(selected) === iso : false;
+              const isSelected = draft === iso;
               return (
                 <Pressable
                   key={iso}
-                  onPress={() => {
-                    onSelect(iso);
-                    onClose();
-                  }}
-                  style={[
-                    styles.dayCell,
-                    styles.dayButton,
-                    isSelected && {backgroundColor: theme.primary},
-                  ]}>
-                  <Text
+                  onPress={() => setDraft(iso)}
+                  accessibilityRole="button"
+                  accessibilityLabel={iso}
+                  style={styles.dayCell}>
+                  <View
                     style={[
-                      styles.dayText,
-                      {color: isSelected ? theme.onPrimary : theme.text},
+                      styles.dayInner,
+                      isSelected && {backgroundColor: theme.primary},
                     ]}>
-                    {day}
-                  </Text>
+                    <Text
+                      style={[
+                        styles.dayText,
+                        {color: isSelected ? theme.onPrimary : theme.text},
+                      ]}>
+                      {day}
+                    </Text>
+                  </View>
                 </Pressable>
               );
             })}
+          </View>
+
+          <View style={styles.actions}>
+            <Pressable
+              onPress={onClose}
+              accessibilityRole="button"
+              accessibilityLabel="Cancel"
+              style={[styles.button, {borderColor: theme.border, backgroundColor: theme.card}]}>
+              <Text style={[styles.buttonText, {color: theme.text}]}>Cancel</Text>
+            </Pressable>
+            <Pressable
+              onPress={apply}
+              disabled={!draft}
+              accessibilityRole="button"
+              accessibilityLabel="Done"
+              style={[
+                styles.button,
+                {
+                  backgroundColor: theme.primary,
+                  borderColor: 'transparent',
+                  opacity: draft ? 1 : 0.45,
+                },
+              ]}>
+              <Text style={[styles.buttonText, {color: theme.onPrimary}]}>Done</Text>
+            </Pressable>
           </View>
         </View>
       </View>
@@ -177,18 +223,32 @@ export function DatePicker({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    justifyContent: 'flex-end',
-    padding: 12,
+    justifyContent: 'center',
+    paddingHorizontal: 22,
   },
-  sheet: {
+  card: {
     borderRadius: 20,
     borderWidth: 1,
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingTop: 18,
+    paddingBottom: 16,
+    shadowOffset: {width: 0, height: 10},
+    shadowOpacity: 0.16,
+    shadowRadius: 20,
+    elevation: 8,
   },
   title: {
-    fontSize: 16,
+    fontSize: 18,
+    lineHeight: 22,
     fontWeight: '700',
-    marginBottom: 12,
+    textAlign: 'center',
+  },
+  chosen: {
+    marginTop: 6,
+    marginBottom: 14,
+    fontSize: 15,
+    fontWeight: '700',
+    textAlign: 'center',
   },
   monthRow: {
     flexDirection: 'row',
@@ -210,7 +270,7 @@ const styles = StyleSheet.create({
   },
   weekRow: {
     flexDirection: 'row',
-    marginBottom: 6,
+    marginBottom: 4,
   },
   weekday: {
     flex: 1,
@@ -223,16 +283,39 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   dayCell: {
-    width: '14.285%',
-    aspectRatio: 1,
+    width: '14.2857%',
+    height: 40,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  dayButton: {
-    borderRadius: 999,
+  dayInner: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   dayText: {
     fontSize: 14,
     fontWeight: '600',
+  },
+  actions: {
+    marginTop: 16,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 8,
+  },
+  button: {
+    minHeight: 40,
+    minWidth: 84,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  buttonText: {
+    fontSize: 14,
+    fontWeight: '700',
   },
 });
