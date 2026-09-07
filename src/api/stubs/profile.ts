@@ -70,15 +70,6 @@ export const PROFILE_PAGE: ProfilePage = {
       title: 'Preferences',
       rows: [
         {
-          id: 'dark-mode',
-          label: 'Dark mode',
-          hint: 'Easier on the eyes in low light',
-          icon: 'moon',
-          tone: 'primary',
-          kind: 'toggle',
-          destination: 'toggle-theme',
-        },
-        {
           id: 'claim-alerts',
           label: 'Claim alerts',
           hint: 'New assignments and portal updates',

@@ -16,7 +16,7 @@ import type {ProfilePage, ProfileRow, ProfileValueFrom} from '../../types/profil
 import type {ClaimPortalTheme} from '../../theme/claimPortals';
 import {getAvatarColor, getInitials} from '../../theme/claimPortals';
 import {AppDialog, useAppDialog} from './AppDialog';
-import {ChevronRightIcon, LogoutMiniIcon, MoonIcon, PencilMiniIcon, SunIcon} from './ClaimPortalsIcons';
+import {ChevronRightIcon, LogoutMiniIcon, PencilMiniIcon} from './ClaimPortalsIcons';
 import {getToneColors, UiIcon} from './UiIcon';
 
 type ProfileSettingsProps = {
@@ -24,7 +24,6 @@ type ProfileSettingsProps = {
   user: ClaimHandlerUser;
   page: ProfilePage;
   extraFields?: ProfileField[];
-  onToggleTheme: () => void;
   onSignOut: () => void;
 };
 
@@ -74,12 +73,10 @@ export function ProfileSettings({
   user,
   page,
   extraFields = [],
-  onToggleTheme,
   onSignOut,
 }: ProfileSettingsProps) {
   const [toggles, setToggles] = useState<Record<string, boolean>>({});
   const {dialog, showDialog, hideDialog} = useAppDialog();
-  const isDark = theme.scheme === 'dark';
   const fields = extraFields.length > 0 ? extraFields : page.fields;
   const referencedFieldIds = useMemo(() => {
     const ids = new Set<string>();
@@ -111,10 +108,6 @@ export function ProfileSettings({
       onSignOut();
       return;
     }
-    if (destination === 'toggle-theme') {
-      onToggleTheme();
-      return;
-    }
     if (destination === 'toggle-alerts') {
       setToggles(current => ({
         ...current,
@@ -142,7 +135,7 @@ export function ProfileSettings({
         <View
           style={[
             styles.avatarRing,
-            {borderColor: isDark ? theme.border : '#D7E4F7'},
+            {borderColor: '#D7E4F7'},
           ]}>
           <View
             style={[
@@ -213,6 +206,9 @@ export function ProfileSettings({
             theme={theme}
             style={!section.title ? styles.signOutGroup : undefined}>
             {section.rows.map((row, index) => {
+              if (row.destination === 'toggle-theme') {
+                return null;
+              }
               const last = index === section.rows.length - 1;
               const tone = getToneColors(theme, row.tone);
               const value = resolveValue(row.valueFrom, row.value, user, fields);
@@ -235,38 +231,15 @@ export function ProfileSettings({
                 );
               }
               if (row.kind === 'toggle') {
-                const on =
-                  row.destination === 'toggle-theme'
-                    ? isDark
-                    : toggles[row.id] ?? row.defaultOn ?? false;
+                const on = toggles[row.id] ?? row.defaultOn ?? false;
                 return (
                   <SwitchRow
                     key={row.id}
                     theme={theme}
-                    icon={
-                      row.destination === 'toggle-theme' ? (
-                        isDark ? (
-                          <MoonIcon
-                            color={theme.primary}
-                            size={15}
-                            cutColor={theme.cardMuted}
-                          />
-                        ) : (
-                          <SunIcon color={theme.gold} size={15} />
-                        )
-                      ) : (
-                        <UiIcon name={row.icon} color={tone.fg} size={15} />
-                      )
-                    }
+                    icon={<UiIcon name={row.icon} color={tone.fg} size={15} />}
                     iconBg={tone.bg}
                     label={row.label}
-                    hint={
-                      row.destination === 'toggle-theme'
-                        ? isDark
-                          ? 'On · easier on the eyes'
-                          : 'Off · light workspace'
-                        : row.hint || ''
-                    }
+                    hint={row.hint || ''}
                     value={on}
                     last={last}
                     onValueChange={() => handleRow(row)}

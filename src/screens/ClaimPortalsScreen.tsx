@@ -34,10 +34,7 @@ import {
   HomeTabBody,
   ProfileTabBody,
 } from '../components/claimPortals/TabPlaceholders';
-import {
-  getClaimPortalTheme,
-  type ThemeScheme,
-} from '../theme/claimPortals';
+import {getClaimPortalTheme} from '../theme/claimPortals';
 import type {
   ClaimPortal,
   ClaimPortalsDashboard,
@@ -138,7 +135,6 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
   const insets = useSafeAreaInsets();
   const user = route.params.user;
 
-  const [scheme, setScheme] = useState<ThemeScheme>('light');
   const [activeTab, setActiveTab] = useState('home');
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
@@ -161,7 +157,7 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
   const [listError, setListError] = useState('');
   const [toast, setToast] = useState('');
 
-  const theme = useMemo(() => getClaimPortalTheme(scheme), [scheme]);
+  const theme = useMemo(() => getClaimPortalTheme('light'), []);
   const {dialog, showDialog, hideDialog} = useAppDialog();
   const debouncedQuery = useDebouncedValue(query, 320);
   const requestSeqRef = useRef(0);
@@ -321,10 +317,6 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
     });
   }, [showDialog, signOut]);
 
-  const toggleTheme = useCallback(() => {
-    setScheme(current => (current === 'light' ? 'dark' : 'light'));
-  }, []);
-
   const openAddClaim = useCallback(() => {
     setAddClaimOpen(true);
   }, []);
@@ -358,11 +350,11 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
         return;
       }
       if (destination === 'faqs') {
-        navigation.navigate('Faqs', {scheme});
+        navigation.navigate('Faqs');
         return;
       }
       if (destination === 'smart-search') {
-        navigation.navigate('SmartSearch', {scheme});
+        navigation.navigate('SmartSearch');
         return;
       }
       showToast('This option will connect when the live API is ready.');
@@ -371,7 +363,6 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
       navigation,
       openAddClaim,
       openSearch,
-      scheme,
       showToast,
       signOut,
       tabDestinations,
@@ -560,18 +551,13 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
 
   return (
     <View style={[styles.root, {backgroundColor: theme.page}]}>
-      <StatusBar
-        barStyle={scheme === 'dark' ? 'light-content' : 'dark-content'}
-      />
+      <StatusBar barStyle="dark-content" />
       <View style={{height: insets.top, backgroundColor: theme.page}} />
       <AppHeader
         theme={theme}
         userName={user.name}
         onMenuPress={() => setDrawerOpen(true)}
-        onThemePress={() =>
-          setScheme(current => (current === 'light' ? 'dark' : 'light'))
-        }
-        onFaqsPress={() => navigation.navigate('Faqs', {scheme})}
+        onFaqsPress={() => navigation.navigate('Faqs')}
         onProfilePress={() => setActiveTab('profile')}
       />
 
@@ -610,7 +596,6 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
             user={user}
             page={dashboard?.profile ?? PROFILE_PAGE}
             extraFields={dashboard?.profileFields ?? dashboard?.profile.fields ?? []}
-            onToggleTheme={toggleTheme}
             onSignOut={requestSignOut}
           />
         ) : null}

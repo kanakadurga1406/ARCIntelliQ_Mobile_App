@@ -24,7 +24,6 @@ import {
   CheckMiniIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
-  CloseIcon,
 } from './ClaimPortalsIcons';
 import {AppDialog, useAppDialog} from './AppDialog';
 import {
@@ -300,21 +299,24 @@ export function IntakeWizard({
           ]}>
         <View style={{height: insets.top, backgroundColor: theme.page}} />
         <View style={styles.header}>
-          <View>
-            <Text style={[styles.headerTitle, {color: theme.text}]}>
-              {current.title}
-            </Text>
-          </View>
           <Pressable
             onPress={requestClose}
             accessibilityRole="button"
-            accessibilityLabel="Close intake"
-            style={[
-              styles.close,
+            accessibilityLabel="Back"
+            hitSlop={8}
+            style={({pressed}) => [
+              styles.iconButton,
               {backgroundColor: theme.card, borderColor: theme.border},
+              pressed && {opacity: 0.8},
             ]}>
-            <CloseIcon color={theme.text} size={12} />
+            <View style={styles.backChevron}>
+              <ChevronRightIcon color={theme.text} size={9} />
+            </View>
           </Pressable>
+          <Text style={[styles.headerTitle, {color: theme.text}]}>
+            {current.title}
+          </Text>
+          <View style={styles.headerSpacer} />
         </View>
 
         <View style={[styles.progressTrack, {backgroundColor: theme.chip}]}>
@@ -682,19 +684,27 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
   },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-  },
-  close: {
+  iconButton: {
     width: 38,
     height: 38,
     borderRadius: 12,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  backChevron: {
+    transform: [{rotate: '180deg'}],
+    marginRight: 2,
+  },
+  headerTitle: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: 17,
+    fontWeight: '800',
+  },
+  headerSpacer: {
+    width: 38,
   },
   progressTrack: {
     height: 4,
