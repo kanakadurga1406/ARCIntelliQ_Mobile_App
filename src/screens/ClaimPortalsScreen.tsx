@@ -121,6 +121,17 @@ function countActiveFilters(filters: PortalFilters): number {
   ].filter(Boolean).length;
 }
 
+function useDebouncedValue<T>(value: T, delay: number): T {
+  const [debounced, setDebounced] = useState(value);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+
+  return debounced;
+}
+
 const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
   const insets = useSafeAreaInsets();
   const user = route.params.user;
@@ -254,6 +265,19 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
   useEffect(() => {
     loadDashboard();
   }, [loadDashboard]);
+
+  useEffect(() => {
+    loadPortalPage(1, 'replace');
+  }, [loadPortalPage]);
+
+  const refreshPortalsTab = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await loadPortalPage(1, 'replace');
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [loadPortalPage]);
 
   const visiblePortals = useMemo(
     () =>
@@ -437,13 +461,9 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
       );
     }
 
-    function refreshPortalsTab(): void | Promise<void> {
-      throw new Error('Function not implemented.');
-    }
-
     return (
       <FlatList
-        data={portals}
+        data={visiblePortals}
         keyExtractor={item => item.id}
         renderItem={({item}) => (
           <PortalCard
@@ -583,7 +603,8 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
             theme={theme}
             user={user}
             extraFields={dashboard?.profileFields ?? []}
-            onSignOut={signOut}
+            onToggleTheme={toggleTheme}
+            onSignOut={requestSignOut}
           />
         ) : null}
         {activeTab !== 'home' &&
@@ -770,7 +791,5 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
-function useDebouncedValue(query: string, arg1: number) {
-  throw new Error('Function not implemented.');
-}
+
 

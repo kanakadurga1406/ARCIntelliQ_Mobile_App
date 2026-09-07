@@ -121,6 +121,21 @@ export type PortalFilters = {
   sortBy: string;
 };
 
+export type PortalListQuery = {
+  page: number;
+  limit: number;
+  search: string;
+  filters: PortalFilters;
+};
+
+export type PortalListPage = {
+  items: ClaimPortal[];
+  page: number;
+  limit: number;
+  total: number;
+  hasMore: boolean;
+};
+
 export type ClaimPortalsDashboard = {
   statCards: StatCard[];
   menuItems: NavItem[];

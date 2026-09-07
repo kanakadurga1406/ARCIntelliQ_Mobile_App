@@ -193,6 +193,7 @@ type ProfileTabProps = {
   theme: ClaimPortalTheme;
   user: ClaimHandlerUser;
   extraFields: ProfileField[];
+  onToggleTheme: () => void;
   onSignOut: () => void;
 };
 
@@ -200,47 +201,17 @@ export function ProfileTabBody({
   theme,
   user,
   extraFields,
+  onToggleTheme,
   onSignOut,
 }: ProfileTabProps) {
   return (
-    <View style={styles.page}>
-      <View
-        style={[
-          styles.card,
-          styles.profileCard,
-          {backgroundColor: theme.card, borderColor: theme.border},
-        ]}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{getInitials(user.name)}</Text>
-        </View>
-        <Text style={[styles.title, {color: theme.text, textAlign: 'center'}]}>
-          {user.name}
-        </Text>
-        <Text style={[styles.subtitle, {color: theme.textSecondary}]}>
-          {user.title}
-        </Text>
-        <Text style={[styles.email, {color: theme.textMuted}]}>{user.email}</Text>
-        {extraFields.map(field => (
-          <View key={field.id} style={styles.profileField}>
-            {field.label ? (
-              <Text style={[styles.fieldLabel, {color: theme.textMuted}]}>
-                {field.label}
-              </Text>
-            ) : null}
-            <Text style={[styles.fieldValue, {color: theme.text}]}>
-              {field.value}
-            </Text>
-          </View>
-        ))}
-        <Pressable
-          onPress={onSignOut}
-          style={[styles.button, {backgroundColor: theme.primary, marginTop: 20}]}>
-          <Text style={[styles.buttonText, {color: theme.onPrimary}]}>
-            Sign out
-          </Text>
-        </Pressable>
-      </View>
-    </View>
+    <ProfileSettings
+      theme={theme}
+      user={user}
+      extraFields={extraFields}
+      onToggleTheme={onToggleTheme}
+      onSignOut={onSignOut}
+    />
   );
 }
 
@@ -310,37 +281,5 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 16,
     fontWeight: '800',
-  },
-  avatar: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: '#10233F',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-  },
-  avatarText: {
-    color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: '800',
-  },
-  email: {
-    marginTop: 4,
-    fontSize: 13,
-  },
-  profileField: {
-    marginTop: 12,
-    alignItems: 'center',
-  },
-  fieldLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-  },
-  fieldValue: {
-    marginTop: 2,
-    fontSize: 14,
-    fontWeight: '600',
   },
 });

@@ -22,7 +22,7 @@ export function applyPortalFilters(
     const matchesStatus =
       filters.status === 'all' ||
       (filters.status === 'new'
-        ? portal.isNewThisMonth
+        ? (portal.flags ?? []).includes('newThisMonth')
         : portal.status === filters.status);
 
     const matchesFrom = !filters.fromDate || portal.createdAt >= filters.fromDate;

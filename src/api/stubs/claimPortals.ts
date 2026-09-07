@@ -1,5 +1,11 @@
-import type {ClaimPortal, ClaimPortalsDashboard} from '../../types/claimPortals';
+import type {
+  ClaimPortal,
+  ClaimPortalsDashboard,
+  PortalListPage,
+  PortalListQuery,
+} from '../../types/claimPortals';
 import {formatPortalDate} from '../../theme/claimPortals';
+import {applyPortalFilters, paginatePortals} from '../../utils/portalList';
 import {FAQS} from './faqs';
 
 type PortalSeed = {
@@ -181,12 +187,27 @@ const PORTAL_SEEDS: PortalSeed[] = [
   },
 ];
 
-const portals = PORTAL_SEEDS.map(toPortal);
-const activeCount = PORTAL_SEEDS.filter(item => item.status === 'active').length;
-const inactiveCount = PORTAL_SEEDS.filter(item => item.status === 'inactive').length;
-const newCount = PORTAL_SEEDS.filter(item => item.isNewThisMonth).length;
-const linkedCount = PORTAL_SEEDS.reduce((sum, item) => sum + item.linkedBusinesses, 0);
-const documentCount = PORTAL_SEEDS.reduce((sum, item) => sum + item.documents, 0);
+const REGION_SUFFIXES = ['East', 'West', 'North'] as const;
+
+const expandedSeeds: PortalSeed[] = [
+  ...PORTAL_SEEDS,
+  ...PORTAL_SEEDS.flatMap((seed, index) =>
+    REGION_SUFFIXES.map((suffix, offset) => ({
+      ...seed,
+      id: `${seed.id}-${suffix.toLowerCase()}`,
+      name: `${seed.name} ${suffix}`,
+      businessId: String(Number(seed.businessId) + (offset + 1) * 17 + index),
+      isNewThisMonth: (index + offset) % 5 === 0,
+    })),
+  ),
+];
+
+const portals = expandedSeeds.map(toPortal);
+const activeCount = expandedSeeds.filter(item => item.status === 'active').length;
+const inactiveCount = expandedSeeds.filter(item => item.status === 'inactive').length;
+const newCount = expandedSeeds.filter(item => item.isNewThisMonth).length;
+const linkedCount = expandedSeeds.reduce((sum, item) => sum + item.linkedBusinesses, 0);
+const documentCount = expandedSeeds.reduce((sum, item) => sum + item.documents, 0);
 
 export const CLAIM_PORTALS_DASHBOARD: ClaimPortalsDashboard = {
   statCards: [
@@ -345,3 +366,8 @@ export const CLAIM_PORTALS_DASHBOARD: ClaimPortalsDashboard = {
   ],
   portals,
 };
+
+export function stubClaimPortalsPage(query: PortalListQuery): PortalListPage {
+  const filtered = applyPortalFilters(portals, query.search, query.filters);
+  return paginatePortals(filtered, query.page, query.limit);
+}
