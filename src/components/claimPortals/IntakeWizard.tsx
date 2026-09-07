@@ -28,11 +28,13 @@ import {
 import {AppDialog, useAppDialog} from './AppDialog';
 import {
   FieldRow,
+  DateField,
   PhoneField,
   REQUIRED_MESSAGE,
   SelectField,
   TextAreaField,
   TextField,
+  TimeField,
 } from './IntakeFields';
 
 type FieldErrors = Record<string, string>;
@@ -54,15 +56,13 @@ function allFields(config: IntakeConfig): IntakeField[] {
   return config.steps.flatMap(step => step.fields);
 }
 
-function createDraft(config: IntakeConfig, portals: ClaimPortal[]): IntakeDraft {
+function createDraft(config: IntakeConfig, _portals: ClaimPortal[]): IntakeDraft {
   const draft: IntakeDraft = {};
   for (const field of allFields(config)) {
     draft[field.id] = field.defaultValue ?? '';
-  }
-  if (!draft.portalId && portals.length > 0) {
-    const preferred =
-      portals.find(portal => portal.status === 'active') ?? portals[0];
-    draft.portalId = preferred.id;
+    if (field.type === 'phone') {
+      draft[`${field.id}Code`] = '+1';
+    }
   }
   return draft;
 }
@@ -96,25 +96,6 @@ function groupFields(fields: IntakeField[]): IntakeField[][] {
   return groups;
 }
 
-function formatDateInput(value: string): string {
-  const digits = value.replace(/\D/g, '').slice(0, 8);
-  if (digits.length <= 2) {
-    return digits;
-  }
-  if (digits.length <= 4) {
-    return `${digits.slice(0, 2)}-${digits.slice(2)}`;
-  }
-  return `${digits.slice(0, 2)}-${digits.slice(2, 4)}-${digits.slice(4)}`;
-}
-
-function formatTimeInput(value: string): string {
-  const digits = value.replace(/\D/g, '').slice(0, 4);
-  if (digits.length <= 2) {
-    return digits;
-  }
-  return `${digits.slice(0, 2)}:${digits.slice(2)}`;
-}
-
 function validateField(field: IntakeField, value: string): string | undefined {
   const rules = field.validation ?? (field.required ? ['required'] : []);
   for (const rule of rules) {
@@ -124,8 +105,12 @@ function validateField(field: IntakeField, value: string): string | undefined {
     if (rule === 'email' && value && !EMAIL_PATTERN.test(value)) {
       return 'Enter a valid email.';
     }
-    if (rule === 'phone10' && value && value.length !== 10) {
-      return 'Exactly 10 digits for the selected country.';
+    if (
+      (rule === 'phone10' || rule === 'phone') &&
+      value &&
+      (value.length < 7 || value.length > 15)
+    ) {
+      return 'Enter 7 to 15 digits.';
     }
     if (rule === 'date' && value && !DATE_PATTERN.test(value)) {
       return 'Enter a valid date (DD-MM-YYYY).';
@@ -217,7 +202,13 @@ export function IntakeWizard({
       allFields(config).some(field => {
         const current = draft[field.id] ?? '';
         const initial = defaults[field.id] ?? '';
-        return current !== initial;
+        if (current !== initial) {
+          return true;
+        }
+        if (field.type !== 'phone') {
+          return false;
+        }
+        return (draft[`${field.id}Code`] ?? '') !== (defaults[`${field.id}Code`] ?? '');
       }),
     [config, defaults, draft],
   );
@@ -425,6 +416,7 @@ export function IntakeWizard({
                     theme={theme}
                     field={field}
                     value={draft[field.id] ?? ''}
+                    countryCode={draft[`${field.id}Code`] ?? '+1'}
                     error={fieldErrors[field.id]}
                     portalOptions={portalOptions}
                     flex={group.length > 1}
@@ -534,6 +526,7 @@ function DynamicField({
   theme,
   field,
   value,
+  countryCode,
   error,
   portalOptions,
   flex,
@@ -543,6 +536,7 @@ function DynamicField({
   theme: ClaimPortalTheme;
   field: IntakeField;
   value: string;
+  countryCode: string;
   error?: string;
   portalOptions: {id: string; label: string}[];
   flex: boolean;
@@ -570,6 +564,7 @@ function DynamicField({
       <SelectField
         {...common}
         value={selectedLabel}
+        placeholder="Select"
         options={options.map(option => option.label)}
         onChange={label => {
           const match = options.find(option => option.label === label);
@@ -595,29 +590,42 @@ function DynamicField({
       <PhoneField
         {...common}
         value={value}
+        countryCode={countryCode}
         onChangeText={next => onChange(field.id, next)}
+        onChangeCode={next => onChange(`${field.id}Code`, next)}
       />
     );
   }
 
-  const isDate = field.type === 'date';
-  const isTime = field.type === 'time';
+  if (field.type === 'date') {
+    return (
+      <DateField
+        {...common}
+        value={value}
+        onChange={next => onChange(field.id, next)}
+      />
+    );
+  }
+
+  if (field.type === 'time') {
+    return (
+      <TimeField
+        {...common}
+        value={value}
+        onChange={next => onChange(field.id, next)}
+      />
+    );
+  }
+
   const isEmail = field.type === 'email';
 
   return (
     <TextField
       {...common}
       value={value}
-      onChangeText={next =>
-        onChange(
-          field.id,
-          isDate ? formatDateInput(next) : isTime ? formatTimeInput(next) : next,
-        )
-      }
+      onChangeText={next => onChange(field.id, next)}
       placeholder={field.placeholder}
-      keyboardType={
-        isDate || isTime ? 'number-pad' : isEmail ? 'email-address' : 'default'
-      }
+      keyboardType={isEmail ? 'email-address' : 'default'}
       autoCapitalize={field.autoCapitalize ?? (isEmail ? 'none' : 'sentences')}
     />
   );
