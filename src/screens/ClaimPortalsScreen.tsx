@@ -23,7 +23,6 @@ import {
   BusinessRequestsSheet,
   FilterSheet,
   PortalActionsSheet,
-  type AddClaimDraft,
 } from '../components/claimPortals/ClaimPortalSheets';
 import {IntakeWizard} from '../components/claimPortals/IntakeWizard';
 import type {IntakeDraft} from '../types/intake';
@@ -438,6 +437,10 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
       );
     }
 
+    function refreshPortalsTab(): void | Promise<void> {
+      throw new Error('Function not implemented.');
+    }
+
     return (
       <FlatList
         data={portals}
@@ -767,3 +770,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
+function useDebouncedValue(query: string, arg1: number) {
+  throw new Error('Function not implemented.');
+}
+

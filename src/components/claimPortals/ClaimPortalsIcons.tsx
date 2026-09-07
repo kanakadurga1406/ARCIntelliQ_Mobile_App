@@ -221,24 +221,24 @@ export function ChevronLeftIcon({
   );
 }
 
-export function ChevronDownIcon({
-  color = colors.textMuted,
-  size = 8,
-}: IconProps) {
-  return (
-    <View
-      style={[
-        styles.chevron,
-        {
-          width: size,
-          height: size,
-          borderColor: color,
-          transform: [{rotate: '135deg'}],
-        },
-      ]}
-    />
-  );
-}
+// export function ChevronDownIcon({
+//   color = colors.textMuted,
+//   size = 8,
+// }: IconProps) {
+//   return (
+//     <View
+//       style={[
+//         styles.chevron,
+//         {
+//           width: size,
+//           height: size,
+//           borderColor: color,
+//           transform: [{rotate: '135deg'}],
+//         },
+//       ]}
+//     />
+//   );
+// }
 
 export function BuildingIcon({color = colors.primary, size = 16}: IconProps) {
   return (
