@@ -8,9 +8,18 @@ export type RootStackParamList = {
   ForgotPassword: undefined;
   VerifyOtp: {email: string; userId: string};
   ClaimHandlerHome: {user: ClaimHandlerUser};
-  ClaimPortals: {user: ClaimHandlerUser};
+  ClaimPortals: {
+    user: ClaimHandlerUser;
+    initialTab?: string;
+    openAddClaim?: boolean;
+  };
   Faqs: undefined;
   SmartSearch: undefined;
+  ClaimHistory: {
+    user: ClaimHandlerUser;
+    portalId: string;
+    portalName: string;
+  };
 };
 
 export type SplashScreenProps = NativeStackScreenProps<
@@ -56,4 +65,9 @@ export type FaqsScreenProps = NativeStackScreenProps<
 export type SmartSearchScreenProps = NativeStackScreenProps<
   RootStackParamList,
   'SmartSearch'
+>;
+
+export type ClaimHistoryScreenProps = NativeStackScreenProps<
+  RootStackParamList,
+  'ClaimHistory'
 >;

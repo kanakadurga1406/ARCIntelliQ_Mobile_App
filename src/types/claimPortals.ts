@@ -23,6 +23,8 @@ export type PageAction = {
   id: string;
   label: string;
   destination: string;
+  icon?: string;
+  style?: 'default' | 'fab';
 };
 
 export type StatCard = {

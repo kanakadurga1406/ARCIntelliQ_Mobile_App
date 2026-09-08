@@ -19,6 +19,8 @@ type PortalListControlsProps = {
   resultCount: number;
   loadedCount: number;
   searchFocusToken?: number;
+  searchPlaceholder?: string;
+  countNoun?: string;
 };
 
 export function PortalListControls({
@@ -36,6 +38,8 @@ export function PortalListControls({
   resultCount,
   loadedCount,
   searchFocusToken = 0,
+  searchPlaceholder = 'Search portals...',
+  countNoun = 'portals',
 }: PortalListControlsProps) {
   const sortLabel =
     sortOptions.find(option => option.id === sortBy)?.label || 'Latest';
@@ -53,7 +57,7 @@ export function PortalListControls({
             key={`portal-search-${searchFocusToken}`}
             value={query}
             onChangeText={onQueryChange}
-            placeholder="Search portals..."
+            placeholder={searchPlaceholder}
             placeholderTextColor={theme.textMuted}
             autoCapitalize="none"
             autoCorrect={false}
@@ -112,8 +116,8 @@ export function PortalListControls({
       <View style={styles.listHeader}>
         <Text style={[styles.count, {color: theme.textSecondary}]}>
           {loadedCount < resultCount
-            ? `${loadedCount} of ${resultCount} portals`
-            : `${resultCount} portals`}
+            ? `${loadedCount} of ${resultCount} ${countNoun}`
+            : `${resultCount} ${countNoun}`}
         </Text>
         {sortOptions.length > 0 ? (
           <Pressable

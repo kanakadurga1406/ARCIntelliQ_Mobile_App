@@ -1,4 +1,5 @@
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import {useFocusEffect} from '@react-navigation/native';
 import {
   ActivityIndicator,
   FlatList,
@@ -270,6 +271,26 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
     loadPortalPage(1, 'replace');
   }, [loadPortalPage]);
 
+  useFocusEffect(
+    useCallback(() => {
+      const nextTab = route.params.initialTab;
+      const shouldOpenAddClaim = route.params.openAddClaim;
+      if (nextTab) {
+        setActiveTab(nextTab);
+      }
+      if (shouldOpenAddClaim) {
+        setAddClaimOpen(true);
+      }
+      if (nextTab || shouldOpenAddClaim) {
+        navigation.setParams({initialTab: undefined, openAddClaim: undefined});
+      }
+    }, [
+      navigation,
+      route.params.initialTab,
+      route.params.openAddClaim,
+    ]),
+  );
+
   const refreshPortalsTab = useCallback(async () => {
     setIsRefreshing(true);
     try {
@@ -326,6 +347,17 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
     setActiveTab('portals');
     setSearchFocusToken(current => current + 1);
   }, []);
+
+  const openClaimHistory = useCallback(
+    (portal: ClaimPortal) => {
+      navigation.navigate('ClaimHistory', {
+        user,
+        portalId: portal.id,
+        portalName: portal.name,
+      });
+    },
+    [navigation, user],
+  );
 
   const handleDestination = useCallback(
     (destination: string) => {
@@ -412,14 +444,7 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
     const destination = action.destination || action.id;
 
     if (destination === 'view') {
-      const detail = [
-        ...portal.meta.map(field => `${field.label}: ${field.value}`),
-        `Status: ${portal.status}`,
-      ].join('\n');
-      showDialog({
-        title: portal.name,
-        message: detail,
-      });
+      openClaimHistory(portal);
       return;
     }
     if (destination === 'delete') {
@@ -467,7 +492,7 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
           <PortalCard
             theme={theme}
             portal={item}
-            onPress={() => setSelectedPortal(item)}
+            onPress={() => openClaimHistory(item)}
             onMenuPress={() => setSelectedPortal(item)}
           />
         )}

@@ -44,6 +44,7 @@ type IntakeWizardProps = {
   theme: ClaimPortalTheme;
   portals: ClaimPortal[];
   config: IntakeConfig;
+  initialValues?: IntakeDraft;
   onClose: () => void;
   onSubmit: (draft: IntakeDraft) => void;
 };
@@ -56,13 +57,20 @@ function allFields(config: IntakeConfig): IntakeField[] {
   return (config.steps ?? []).flatMap(step => step.fields ?? []);
 }
 
-function createDraft(config: IntakeConfig, _portals: ClaimPortal[]): IntakeDraft {
+function createDraft(
+  config: IntakeConfig,
+  _portals: ClaimPortal[],
+  initialValues?: IntakeDraft,
+): IntakeDraft {
   const draft: IntakeDraft = {};
   for (const field of allFields(config)) {
     draft[field.id] = field.defaultValue ?? '';
     if (field.type === 'phone') {
       draft[`${field.id}Code`] = '+1';
     }
+  }
+  if (initialValues) {
+    Object.assign(draft, initialValues);
   }
   return draft;
 }
@@ -127,6 +135,7 @@ export function IntakeWizard({
   theme,
   portals,
   config,
+  initialValues,
   onClose,
   onSubmit,
 }: IntakeWizardProps) {
@@ -148,7 +157,7 @@ export function IntakeWizard({
   useEffect(() => {
     if (visible) {
       setStep(0);
-      setDraft(createDraft(config, portals));
+      setDraft(createDraft(config, portals, initialValues));
       setFieldErrors({});
     }
   }, [visible, config, portals]);
@@ -196,7 +205,10 @@ export function IntakeWizard({
     });
   };
 
-  const defaults = useMemo(() => createDraft(config, portals), [config, portals]);
+  const defaults = useMemo(
+    () => createDraft(config, portals, initialValues),
+    [config, initialValues, portals],
+  );
   const isDirty = useMemo(
     () =>
       allFields(config).some(field => {
