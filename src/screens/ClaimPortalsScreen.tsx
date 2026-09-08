@@ -19,7 +19,6 @@ import {
 import {clearSession} from '../api/session';
 import {AppDialog, useAppDialog} from '../components/claimPortals/AppDialog';
 import {AppHeader} from '../components/claimPortals/AppHeader';
-import {BottomTabBar} from '../components/claimPortals/BottomTabBar';
 import {
   BusinessRequestsSheet,
   FilterSheet,
@@ -645,19 +644,11 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
         ) : null}
       </View>
 
-      <BottomTabBar
-        theme={theme}
-        tabs={dashboard?.bottomTabs ?? []}
-        activeTab={activeTab}
-        bottomInset={insets.bottom}
-        onDestination={handleDestination}
-      />
-
       {toast ? (
         <View
           style={[
             styles.toast,
-            {bottom: 88 + insets.bottom, backgroundColor: theme.text},
+            {bottom: 24 + insets.bottom, backgroundColor: theme.text},
           ]}>
           <Text style={styles.toastText}>{toast}</Text>
         </View>
