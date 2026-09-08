@@ -18,8 +18,7 @@ import {
   resendClaimHandlerOtp,
   verifyClaimHandlerOtp,
 } from '../api/auth';
-import {USE_STUB_API} from '../api/config';
-import {setSession} from '../api/session';
+import {getPendingOtp, setSession} from '../api/session';
 import {AppDialog, useAppDialog} from '../components/claimPortals/AppDialog';
 import {ChevronIcon} from '../components/PortalIcons';
 import {colors} from '../theme';
@@ -42,8 +41,7 @@ const VerifyOtpScreen = ({navigation, route}: VerifyOtpScreenProps) => {
   const insets = useSafeAreaInsets();
   const theme = useMemo(() => getClaimPortalTheme('light'), []);
   const {dialog, showDialog, hideDialog} = useAppDialog();
-  const {email} = route.params;
-  const [challengeId, setChallengeId] = useState(route.params.challengeId);
+  const {email, userId} = route.params;
   const [seconds, setSeconds] = useState(RESEND_SECONDS);
   const [isVerifying, setIsVerifying] = useState(false);
   const [isResending, setIsResending] = useState(false);
@@ -99,9 +97,11 @@ const VerifyOtpScreen = ({navigation, route}: VerifyOtpScreenProps) => {
     setErrorMessage('');
 
     try {
+      const stored = getPendingOtp();
       const session = await verifyClaimHandlerOtp({
-        challengeId,
-        code,
+        email: stored?.email || email,
+        userId: stored?.userId || userId,
+        otp: code,
       });
       setSession(session);
       navigation.reset({
@@ -130,8 +130,7 @@ const VerifyOtpScreen = ({navigation, route}: VerifyOtpScreenProps) => {
     setIsResending(true);
     setErrorMessage('');
     try {
-      const challenge = await resendClaimHandlerOtp({challengeId});
-      setChallengeId(challenge.challengeId);
+      await resendClaimHandlerOtp({email, userId});
       setCode('');
       setSeconds(RESEND_SECONDS);
       focusOtp();
@@ -252,8 +251,6 @@ const VerifyOtpScreen = ({navigation, route}: VerifyOtpScreenProps) => {
 
           {errorMessage ? (
             <Text style={styles.errorText}>{errorMessage}</Text>
-          ) : USE_STUB_API ? (
-            <Text style={styles.stubHint}>Demo code: 123456</Text>
           ) : (
             <View style={styles.otpSpacer} />
           )}
@@ -472,13 +469,6 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     color: colors.danger,
     textAlign: 'center',
-  },
-  stubHint: {
-    marginTop: 8,
-    marginBottom: 4,
-    fontSize: 12,
-    color: colors.textMuted,
-    fontWeight: '600',
   },
   otpSpacer: {
     height: 12,

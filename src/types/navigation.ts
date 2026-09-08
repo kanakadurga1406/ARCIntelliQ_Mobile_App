@@ -6,7 +6,7 @@ export type RootStackParamList = {
   PortalSelect: undefined;
   ClaimHandlerLogin: undefined;
   ForgotPassword: undefined;
-  VerifyOtp: {email: string; challengeId: string};
+  VerifyOtp: {email: string; userId: string};
   ClaimHandlerHome: {user: ClaimHandlerUser};
   ClaimPortals: {user: ClaimHandlerUser};
   Faqs: undefined;

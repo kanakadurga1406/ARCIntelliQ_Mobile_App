@@ -13,7 +13,7 @@ export function applyPortalFilters(
 ): ClaimPortal[] {
   const normalizedQuery = query.trim().toLowerCase();
 
-  const filtered = portals.filter(portal => {
+  const filtered = (portals ?? []).filter(portal => {
     const matchesQuery =
       !normalizedQuery ||
       portal.name.toLowerCase().includes(normalizedQuery) ||
@@ -68,11 +68,14 @@ export function mergeUniquePortals(
   current: ClaimPortal[],
   incoming: ClaimPortal[],
 ): ClaimPortal[] {
-  if (current.length === 0) {
-    return incoming;
+  const safeCurrent = current ?? [];
+  const safeIncoming = incoming ?? [];
+
+  if (safeCurrent.length === 0) {
+    return safeIncoming;
   }
 
-  const seen = new Set(current.map(item => item.id));
-  const next = incoming.filter(item => !seen.has(item.id));
-  return next.length === 0 ? current : [...current, ...next];
+  const seen = new Set(safeCurrent.map(item => item.id));
+  const next = safeIncoming.filter(item => !seen.has(item.id));
+  return next.length === 0 ? safeCurrent : [...safeCurrent, ...next];
 }

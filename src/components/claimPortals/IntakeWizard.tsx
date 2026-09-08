@@ -53,7 +53,7 @@ const TIME_PATTERN = /^\d{2}:\d{2}$/;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function allFields(config: IntakeConfig): IntakeField[] {
-  return config.steps.flatMap(step => step.fields);
+  return (config.steps ?? []).flatMap(step => step.fields ?? []);
 }
 
 function createDraft(config: IntakeConfig, _portals: ClaimPortal[]): IntakeDraft {
@@ -218,7 +218,7 @@ export function IntakeWizard({
 
   const validateStep = (target: IntakeStep): FieldErrors => {
     const next: FieldErrors = {};
-    target.fields.filter(field => isVisible(field, draft)).forEach(field => {
+    (target.fields ?? []).filter(field => isVisible(field, draft)).forEach(field => {
       const error = validateField(field, draft[field.id] ?? '');
       if (error) {
         next[field.id] = error;
@@ -270,7 +270,9 @@ export function IntakeWizard({
     return null;
   }
 
-  const visibleFields = current.fields.filter(field => isVisible(field, draft));
+  const visibleFields = (current.fields ?? []).filter(field =>
+    isVisible(field, draft),
+  );
 
   return (
     <Modal

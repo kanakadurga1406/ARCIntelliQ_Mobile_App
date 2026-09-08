@@ -99,10 +99,11 @@ const ClaimHandlerLoginScreen = ({
       const challenge = await startClaimHandlerLogin({
         email: trimmedEmail,
         password,
+        remember: rememberMe,
       });
       navigation.navigate('VerifyOtp', {
         email: challenge.email,
-        challengeId: challenge.challengeId,
+        userId: challenge.userId,
       });
     } catch (error) {
       setErrorMessage(

@@ -82,7 +82,7 @@ function applyPortalFilters(
   const normalizedQuery = query.trim().toLowerCase();
   const chip = chips.find(item => item.id === filters.status);
 
-  const filtered = portals.filter(portal => {
+  const filtered = (portals ?? []).filter(portal => {
     const matchesQuery =
       !normalizedQuery ||
       portal.name.toLowerCase().includes(normalizedQuery) ||
@@ -229,10 +229,11 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
         setPage(result.page);
         setListTotal(result.total);
         setPortals(current => {
+          const items = result.items ?? [];
           const next =
             mode === 'replace'
-              ? result.items
-              : mergeUniquePortals(current, result.items);
+              ? items
+              : mergeUniquePortals(current, items);
           portalsRef.current = next;
           return next;
         });
@@ -473,10 +474,10 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
         ListHeaderComponent={
           <View style={styles.headerBlock}>
             <Text style={[styles.pageTitle, {color: theme.text}]}>
-              {dashboard?.portalsPage.title || 'Claim Portals'}
+              {dashboard?.portalsPage?.title || 'Claim Portals'}
             </Text>
             <Text style={[styles.pageSubtitle, {color: theme.textSecondary}]}>
-              {dashboard?.portalsPage.subtitle ||
+              {dashboard?.portalsPage?.subtitle ||
                 'Manage and monitor all business portals'}
             </Text>
             {dashboard ? (
@@ -484,11 +485,11 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
                 theme={theme}
                 query={query}
                 onQueryChange={setQuery}
-                chips={dashboard.statusChips}
+                chips={dashboard.statusChips ?? []}
                 activeStatus={filters.status}
                 onStatusChange={handleStatusChange}
                 filterCount={countActiveFilters(filters)}
-                sortOptions={dashboard.sortOptions}
+                sortOptions={dashboard.sortOptions ?? []}
                 sortBy={filters.sortBy}
                 onSortPress={handleSortPress}
                 onFilterPress={() => setFilterOpen(true)}
@@ -567,8 +568,8 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
           <HomeTabBody
             theme={theme}
             user={user}
-            subtitle={dashboard?.home.subtitle ?? ''}
-            actions={dashboard?.home.actions ?? []}
+            subtitle={dashboard?.home?.subtitle ?? ''}
+            actions={dashboard?.home?.actions ?? []}
             statCards={dashboard?.statCards ?? null}
             isLoading={isLoading}
             isRefreshing={isRefreshing}
@@ -595,7 +596,9 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
             theme={theme}
             user={user}
             page={dashboard?.profile ?? PROFILE_PAGE}
-            extraFields={dashboard?.profileFields ?? dashboard?.profile.fields ?? []}
+            extraFields={
+              dashboard?.profileFields ?? dashboard?.profile?.fields ?? []
+            }
             onSignOut={requestSignOut}
           />
         ) : null}
@@ -605,8 +608,9 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
         activeTab !== 'profile' ? (
           <View style={styles.centered}>
             <Text style={[styles.pageTitle, {color: theme.text}]}>
-              {dashboard?.bottomTabs.find(item => item.destination === activeTab)
-                ?.label || 'New section'}
+              {(dashboard?.bottomTabs ?? []).find(
+                item => item.destination === activeTab,
+              )?.label || 'New section'}
             </Text>
             <Text style={[styles.helper, {color: theme.textSecondary}]}>
               This screen was sent by the API and will render its own content

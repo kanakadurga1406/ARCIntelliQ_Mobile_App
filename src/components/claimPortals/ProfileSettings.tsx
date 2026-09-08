@@ -89,7 +89,9 @@ export function ProfileSettings({
     });
     return ids;
   }, [page.sections]);
-  const leftoverFields = fields.filter(field => !referencedFieldIds.has(field.id));
+  const leftoverFields = (fields ?? []).filter(
+    field => !referencedFieldIds.has(field.id),
+  );
 
   const shareEmail = async () => {
     try {

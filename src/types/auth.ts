@@ -8,13 +8,10 @@ export type ClaimHandlerUser = {
   title: string;
 };
 
-export type ClaimHandlerAccount = ClaimHandlerUser & {
-  password: string;
-};
-
 export type LoginCredentials = {
   email: string;
   password: string;
+  remember?: boolean;
 };
 
 export type AuthSession = {
@@ -23,18 +20,20 @@ export type AuthSession = {
 };
 
 export type OtpChallenge = {
-  challengeId: string;
   email: string;
+  userId: string;
   expiresIn: number;
 };
 
 export type VerifyOtpPayload = {
-  challengeId: string;
-  code: string;
+  email: string;
+  userId: string;
+  otp: string;
 };
 
 export type ResendOtpPayload = {
-  challengeId: string;
+  email: string;
+  userId: string;
 };
 
 export type PasswordResetRequest = {
