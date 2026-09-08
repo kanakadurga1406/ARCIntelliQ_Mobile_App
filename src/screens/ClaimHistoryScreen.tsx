@@ -241,7 +241,10 @@ const ClaimHistoryScreen = ({navigation, route}: ClaimHistoryScreenProps) => {
         destination === 'dashboard' ||
         destination === 'profile'
       ) {
-        navigation.navigate('ClaimPortals', {user, initialTab: destination});
+        navigation.navigate('ClaimPortals', {
+          user,
+          initialTab: destination === 'home' ? 'portals' : destination,
+        });
         return;
       }
       showToast('This option will connect when the live API is ready.');

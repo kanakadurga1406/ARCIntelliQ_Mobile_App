@@ -31,7 +31,6 @@ import {PortalListControls} from '../components/claimPortals/PortalListControls'
 import {SideDrawer} from '../components/claimPortals/SideDrawer';
 import {
   DashboardTabBody,
-  HomeTabBody,
   ProfileTabBody,
 } from '../components/claimPortals/TabPlaceholders';
 import {getClaimPortalTheme} from '../theme/claimPortals';
@@ -54,6 +53,8 @@ const DEFAULT_FILTERS: PortalFilters = {
   toDate: '',
   sortBy: 'latest',
 };
+
+const HUB_HIDDEN_MENU = new Set(['dashboard', 'add-claim', 'smart-search']);
 
 function portalValue(portal: ClaimPortal, field: string): string {
   const fromValues = portal.values?.[field];
@@ -135,7 +136,7 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
   const insets = useSafeAreaInsets();
   const user = route.params.user;
 
-  const [activeTab, setActiveTab] = useState('home');
+  const [activeTab, setActiveTab] = useState('portals');
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
   const [requestsOpen, setRequestsOpen] = useState(false);
@@ -272,7 +273,10 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
 
   useFocusEffect(
     useCallback(() => {
-      const nextTab = route.params.initialTab;
+      const nextTab =
+        route.params.initialTab === 'home'
+          ? 'portals'
+          : route.params.initialTab;
       const shouldOpenAddClaim = route.params.openAddClaim;
       if (nextTab) {
         setActiveTab(nextTab);
@@ -361,6 +365,10 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
   const handleDestination = useCallback(
     (destination: string) => {
       setDrawerOpen(false);
+      if (destination === 'home') {
+        setActiveTab('portals');
+        return;
+      }
       if (tabDestinations.has(destination)) {
         setActiveTab(destination);
         return;
@@ -588,24 +596,6 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
 
       <View style={styles.body}>
         {activeTab === 'portals' ? renderPortals() : null}
-        {activeTab === 'home' ? (
-          <HomeTabBody
-            theme={theme}
-            user={user}
-            subtitle={dashboard?.home?.subtitle ?? ''}
-            actions={dashboard?.home?.actions ?? []}
-            statCards={dashboard?.statCards ?? null}
-            isLoading={isLoading}
-            isRefreshing={isRefreshing}
-            errorMessage={errorMessage}
-            onRefresh={() => loadDashboard(true)}
-            onRetry={() => loadDashboard()}
-            onAction={handleDestination}
-            onStatPress={card =>
-              card.destination ? handleDestination(card.destination) : undefined
-            }
-          />
-        ) : null}
         {activeTab === 'dashboard' ? (
           <DashboardTabBody
             theme={theme}
@@ -626,8 +616,7 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
             onSignOut={requestSignOut}
           />
         ) : null}
-        {activeTab !== 'home' &&
-        activeTab !== 'portals' &&
+        {activeTab !== 'portals' &&
         activeTab !== 'dashboard' &&
         activeTab !== 'profile' ? (
           <View style={styles.centered}>
@@ -658,7 +647,9 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
         visible={drawerOpen}
         theme={theme}
         user={user}
-        menuItems={dashboard?.menuItems ?? []}
+        menuItems={(dashboard?.menuItems ?? []).filter(
+          item => !HUB_HIDDEN_MENU.has(item.destination),
+        )}
         activeDestination={activeTab}
         topInset={insets.top}
         bottomInset={insets.bottom}
