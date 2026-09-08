@@ -21,3 +21,26 @@ export type AuthSession = {
   token: string;
   user: ClaimHandlerUser;
 };
+
+export type OtpChallenge = {
+  challengeId: string;
+  email: string;
+  expiresIn: number;
+};
+
+export type VerifyOtpPayload = {
+  challengeId: string;
+  code: string;
+};
+
+export type ResendOtpPayload = {
+  challengeId: string;
+};
+
+export type PasswordResetRequest = {
+  email: string;
+};
+
+export type PasswordResetResult = {
+  message: string;
+};

@@ -21,8 +21,7 @@ import {
   EyeOffIcon,
   LockIcon,
 } from '../components/FormIcons';
-import {loginClaimHandler} from '../api/auth';
-import {setSession} from '../api/session';
+import {startClaimHandlerLogin} from '../api/auth';
 import {colors} from '../theme';
 import type {ClaimHandlerLoginScreenProps} from '../types/navigation';
 
@@ -97,12 +96,14 @@ const ClaimHandlerLoginScreen = ({
     setErrorMessage('');
 
     try {
-      const session = await loginClaimHandler({
+      const challenge = await startClaimHandlerLogin({
         email: trimmedEmail,
         password,
       });
-      setSession(session);
-      navigation.replace('ClaimPortals', {user: session.user});
+      navigation.navigate('VerifyOtp', {
+        email: challenge.email,
+        challengeId: challenge.challengeId,
+      });
     } catch (error) {
       setErrorMessage(
         error instanceof Error
@@ -216,7 +217,11 @@ const ClaimHandlerLoginScreen = ({
                 </View>
                 <Text style={styles.rememberText}>Remember me</Text>
               </Pressable>
-              <Pressable hitSlop={6}>
+              <Pressable
+                onPress={() => navigation.navigate('ForgotPassword')}
+                hitSlop={6}
+                accessibilityRole="button"
+                accessibilityLabel="Forgot password">
                 <Text style={styles.link}>Forgot password?</Text>
               </Pressable>
             </View>

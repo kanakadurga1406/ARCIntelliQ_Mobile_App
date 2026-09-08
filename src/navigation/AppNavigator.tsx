@@ -5,6 +5,8 @@ import type {RootStackParamList} from '../types/navigation';
 import SplashScreen from '../screens/SplashScreen';
 import PortalSelectScreen from '../screens/PortalSelectScreen';
 import ClaimHandlerLoginScreen from '../screens/ClaimHandlerLoginScreen';
+import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
+import VerifyOtpScreen from '../screens/VerifyOtpScreen';
 import ClaimHandlerHomeScreen from '../screens/ClaimHandlerHomeScreen';
 import ClaimPortalsScreen from '../screens/ClaimPortalsScreen';
 import FaqsScreen from '../screens/FaqsScreen';
@@ -27,6 +29,8 @@ const AppNavigator = () => {
           name="ClaimHandlerLogin"
           component={ClaimHandlerLoginScreen}
         />
+        <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+        <Stack.Screen name="VerifyOtp" component={VerifyOtpScreen} />
         <Stack.Screen
           name="ClaimHandlerHome"
           component={ClaimHandlerHomeScreen}

@@ -50,6 +50,14 @@ export function ShieldIcon() {
   );
 }
 
+export function RecoveryShieldIcon() {
+  return (
+    <View style={styles.recoveryShield}>
+      <View style={styles.recoveryKeyhole} />
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   mailBox: {
     width: 18,
@@ -144,5 +152,22 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1.6,
     borderColor: colors.onPrimary,
     transform: [{rotate: '-45deg'}],
+  },
+  recoveryShield: {
+    width: 28,
+    height: 32,
+    borderTopLeftRadius: 6,
+    borderTopRightRadius: 6,
+    borderBottomLeftRadius: 14,
+    borderBottomRightRadius: 14,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  recoveryKeyhole: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: colors.onPrimary,
   },
 });

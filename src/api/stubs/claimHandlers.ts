@@ -1,5 +1,7 @@
 import type {ClaimHandlerAccount} from '../../types/auth';
 
+export const STUB_OTP_CODE = '123456';
+
 export const CLAIM_HANDLER_USERS: ClaimHandlerAccount[] = [
   {
     id: 'ch-1001',
