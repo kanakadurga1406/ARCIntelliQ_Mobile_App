@@ -570,18 +570,44 @@ export function DateField({
   value: string;
   onChange: (value: string) => void;
 }) {
-  const selected = parseDateValue(value);
   const today = startOfDay(new Date());
-  const initial = selected ?? today;
   const [open, setOpen] = useState(false);
-  const [cursor, setCursor] = useState(
-    new Date(initial.getFullYear(), initial.getMonth(), 1),
-  );
+  const [cursor, setCursor] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
+  const [draft, setDraft] = useState<Date | null>(null);
+  const [menu, setMenu] = useState<'month' | 'year' | null>(null);
 
   const openPicker = () => {
-    const next = parseDateValue(value) ?? today;
-    setCursor(new Date(next.getFullYear(), next.getMonth(), 1));
+    const current = parseDateValue(value) ?? today;
+    setCursor(new Date(current.getFullYear(), current.getMonth(), 1));
+    setDraft(parseDateValue(value));
+    setMenu(null);
     setOpen(true);
+  };
+
+  const closePicker = () => {
+    setMenu(null);
+    setOpen(false);
+  };
+
+  const moveMonth = (offset: number) => {
+    setMenu(null);
+    setCursor(current => {
+      const next = new Date(current.getFullYear(), current.getMonth() + offset, 1);
+      if (startOfDay(next) > new Date(today.getFullYear(), today.getMonth(), 1)) {
+        return current;
+      }
+      return next;
+    });
+  };
+
+  const jumpTo = (year: number, month: number) => {
+    const next = new Date(year, month, 1);
+    if (startOfDay(next) > new Date(today.getFullYear(), today.getMonth(), 1)) {
+      setCursor(new Date(today.getFullYear(), today.getMonth(), 1));
+    } else {
+      setCursor(next);
+    }
+    setMenu(null);
   };
 
   const year = cursor.getFullYear();
@@ -591,10 +617,19 @@ export function DateField({
   const cells = [
     ...Array.from({length: firstWeekday}, () => null),
     ...Array.from({length: daysInMonth}, (_, index) => index + 1),
+    ...Array.from(
+      {length: Math.max(0, 42 - firstWeekday - daysInMonth)},
+      () => null,
+    ),
   ];
   const canGoNext =
     year < today.getFullYear() ||
     (year === today.getFullYear() && month < today.getMonth());
+  const years = Array.from(
+    {length: 21},
+    (_, index) => today.getFullYear() - index,
+  );
+  const canConfirm = Boolean(draft);
 
   return (
     <View style={[styles.field, flex && styles.flexField]}>
@@ -625,103 +660,238 @@ export function DateField({
       {!error && hint ? (
         <Text style={[styles.hint, {color: theme.textMuted}]}>{hint}</Text>
       ) : null}
-      <PickerSheet
-        theme={theme}
+
+      <Modal
         visible={open}
-        title={label}
-        onClose={() => setOpen(false)}>
-        <View style={styles.calendar}>
-          <View style={styles.calendarNav}>
-            <Pressable
-              onPress={() =>
-                setCursor(current => new Date(current.getFullYear(), current.getMonth() - 1, 1))
-              }
-              accessibilityRole="button"
-              accessibilityLabel="Previous month"
-              style={[styles.monthButton, {backgroundColor: theme.chip}]}>
-              <ChevronLeftIcon color={theme.text} size={9} />
-            </Pressable>
-            <Text style={[styles.monthTitle, {color: theme.text}]}>
-              {MONTHS[month]} {year}
+        transparent
+        animationType="fade"
+        onRequestClose={closePicker}>
+        <View style={styles.calendarRoot}>
+          <Pressable
+            style={[StyleSheet.absoluteFill, {backgroundColor: theme.overlay}]}
+            onPress={closePicker}
+          />
+          <View
+            style={[
+              styles.calendarCard,
+              {
+                backgroundColor: theme.sheet,
+                shadowColor: theme.shadow,
+              },
+            ]}>
+            <Text style={[styles.calendarTitle, {color: theme.text}]}>
+              {label}
             </Text>
-            <Pressable
-              disabled={!canGoNext}
-              onPress={() =>
-                setCursor(current => new Date(current.getFullYear(), current.getMonth() + 1, 1))
-              }
-              accessibilityRole="button"
-              accessibilityLabel="Next month"
-              style={[
-                styles.monthButton,
-                {backgroundColor: theme.chip, opacity: canGoNext ? 1 : 0.35},
-              ]}>
-              <ChevronRightIcon color={theme.text} size={9} />
-            </Pressable>
-          </View>
-          <View style={styles.weekRow}>
-            {WEEKDAYS.map(day => (
-              <Text
-                key={day}
-                style={[styles.weekday, {color: theme.textMuted}]}>
-                {day}
-              </Text>
-            ))}
-          </View>
-          <View style={styles.dayGrid}>
-            {cells.map((day, index) => {
-              if (!day) {
-                return <View key={`empty-${index}`} style={styles.dayCell} />;
-              }
-              const date = new Date(year, month, day);
-              const disabled = startOfDay(date) > today;
-              const isSelected =
-                selected?.getFullYear() === year &&
-                selected.getMonth() === month &&
-                selected.getDate() === day;
-              const isToday =
-                today.getFullYear() === year &&
-                today.getMonth() === month &&
-                today.getDate() === day;
-              return (
+            <Text style={[styles.calendarSubtitle, {color: theme.primary}]}>
+              Select a day
+            </Text>
+
+            <View style={styles.calendarNav}>
+              <Pressable
+                onPress={() => moveMonth(-1)}
+                accessibilityRole="button"
+                accessibilityLabel="Previous month"
+                style={[styles.monthButton, {borderColor: theme.border}]}>
+                <ChevronLeftIcon color={theme.text} size={9} />
+              </Pressable>
+              <View style={styles.navSelects}>
                 <Pressable
-                  key={date.toISOString()}
-                  disabled={disabled}
-                  onPress={() => {
-                    onChange(formatDateValue(date));
-                    setOpen(false);
-                  }}
+                  onPress={() => setMenu(current => (current === 'month' ? null : 'month'))}
                   style={[
-                    styles.dayCell,
-                    isSelected && {
-                      backgroundColor: theme.primary,
-                      borderRadius: 18,
-                    },
-                    !isSelected && isToday && {
-                      borderWidth: 1,
-                      borderColor: theme.primary,
-                      borderRadius: 18,
+                    styles.navChip,
+                    {
+                      backgroundColor: theme.cardMuted,
+                      borderColor: menu === 'month' ? theme.primary : theme.border,
                     },
                   ]}>
-                  <Text
-                    style={[
-                      styles.dayText,
-                      {
-                        color: disabled
-                          ? theme.textMuted
-                          : isSelected
-                            ? theme.onPrimary
-                            : theme.text,
-                        opacity: disabled ? 0.4 : 1,
-                      },
-                    ]}>
-                    {day}
+                  <Text style={[styles.navChipText, {color: theme.text}]}>
+                    {MONTHS[month]}
                   </Text>
+                  <ChevronDownIcon color={theme.textMuted} size={7} />
                 </Pressable>
-              );
-            })}
+                <Pressable
+                  onPress={() => setMenu(current => (current === 'year' ? null : 'year'))}
+                  style={[
+                    styles.navChip,
+                    {
+                      backgroundColor: theme.cardMuted,
+                      borderColor: menu === 'year' ? theme.primary : theme.border,
+                    },
+                  ]}>
+                  <Text style={[styles.navChipText, {color: theme.text}]}>
+                    {year}
+                  </Text>
+                  <ChevronDownIcon color={theme.textMuted} size={7} />
+                </Pressable>
+              </View>
+              <Pressable
+                disabled={!canGoNext}
+                onPress={() => moveMonth(1)}
+                accessibilityRole="button"
+                accessibilityLabel="Next month"
+                style={[
+                  styles.monthButton,
+                  {borderColor: theme.border, opacity: canGoNext ? 1 : 0.35},
+                ]}>
+                <ChevronRightIcon color={theme.text} size={9} />
+              </Pressable>
+            </View>
+
+            {menu === 'month' ? (
+              <ScrollView style={styles.menuList} nestedScrollEnabled>
+                {MONTHS.map((name, index) => {
+                  const disabled =
+                    year === today.getFullYear() && index > today.getMonth();
+                  const active = index === month;
+                  return (
+                    <Pressable
+                      key={name}
+                      disabled={disabled}
+                      onPress={() => jumpTo(year, index)}
+                      style={[
+                        styles.menuItem,
+                        active && {backgroundColor: theme.primary},
+                      ]}>
+                      <Text
+                        style={[
+                          styles.menuItemText,
+                          {
+                            color: disabled
+                              ? theme.textMuted
+                              : active
+                                ? theme.onPrimary
+                                : theme.text,
+                          },
+                        ]}>
+                        {name}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            ) : null}
+
+            {menu === 'year' ? (
+              <ScrollView style={styles.menuList} nestedScrollEnabled>
+                {years.map(item => {
+                  const active = item === year;
+                  return (
+                    <Pressable
+                      key={item}
+                      onPress={() => jumpTo(item, month)}
+                      style={[
+                        styles.menuItem,
+                        active && {backgroundColor: theme.primary},
+                      ]}>
+                      <Text
+                        style={[
+                          styles.menuItemText,
+                          {color: active ? theme.onPrimary : theme.text},
+                        ]}>
+                        {item}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            ) : null}
+
+            {menu ? null : (
+              <>
+                <View style={styles.weekRow}>
+                  {WEEKDAYS.map(day => (
+                    <Text
+                      key={day}
+                      style={[styles.weekday, {color: theme.textMuted}]}>
+                      {day}
+                    </Text>
+                  ))}
+                </View>
+                <View style={styles.dayGrid}>
+                  {cells.map((day, index) => {
+                    if (!day) {
+                      return <View key={`empty-${index}`} style={styles.dayCell} />;
+                    }
+                    const date = new Date(year, month, day);
+                    const disabled = startOfDay(date) > today;
+                    const isSelected =
+                      draft?.getFullYear() === year &&
+                      draft.getMonth() === month &&
+                      draft.getDate() === day;
+                    const isToday =
+                      today.getFullYear() === year &&
+                      today.getMonth() === month &&
+                      today.getDate() === day;
+                    return (
+                      <Pressable
+                        key={`${year}-${month}-${day}`}
+                        disabled={disabled}
+                        onPress={() => setDraft(date)}
+                        style={styles.dayCell}>
+                        <View
+                          style={[
+                            styles.dayInner,
+                            isSelected && {backgroundColor: theme.primary},
+                            !isSelected && isToday && {
+                              borderWidth: 1,
+                              borderColor: theme.primary,
+                            },
+                          ]}>
+                          <Text
+                            style={[
+                              styles.dayText,
+                              {
+                                color: disabled
+                                  ? theme.textMuted
+                                  : isSelected
+                                    ? theme.onPrimary
+                                    : theme.text,
+                                opacity: disabled ? 0.35 : 1,
+                              },
+                            ]}>
+                            {day}
+                          </Text>
+                        </View>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </>
+            )}
+
+            <View style={styles.calendarFooter}>
+              <Pressable
+                onPress={closePicker}
+                accessibilityRole="button"
+                accessibilityLabel="Cancel"
+                style={styles.cancelButton}>
+                <Text style={[styles.cancelText, {color: theme.text}]}>
+                  Cancel
+                </Text>
+              </Pressable>
+              <Pressable
+                disabled={!canConfirm}
+                onPress={() => {
+                  if (!draft) {
+                    return;
+                  }
+                  onChange(formatDateValue(draft));
+                  closePicker();
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="Done"
+                style={[
+                  styles.doneButton,
+                  {backgroundColor: theme.primary, opacity: canConfirm ? 1 : 0.45},
+                ]}>
+                <Text style={[styles.doneText, {color: theme.onPrimary}]}>
+                  Done
+                </Text>
+              </Pressable>
+            </View>
           </View>
         </View>
-      </PickerSheet>
+      </Modal>
     </View>
   );
 }
@@ -1047,36 +1217,90 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
   },
-  calendar: {
-    paddingHorizontal: 12,
-    paddingBottom: 12,
+  calendarRoot: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 22,
+  },
+  calendarCard: {
+    borderRadius: 24,
+    paddingHorizontal: 18,
+    paddingTop: 20,
+    paddingBottom: 14,
+    elevation: 8,
+    shadowOffset: {width: 0, height: 10},
+    shadowOpacity: 0.16,
+    shadowRadius: 20,
+  },
+  calendarTitle: {
+    textAlign: 'center',
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  calendarSubtitle: {
+    marginTop: 4,
+    marginBottom: 16,
+    textAlign: 'center',
+    fontSize: 14,
+    fontWeight: '600',
   },
   calendarNav: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 12,
+    gap: 8,
+    marginBottom: 14,
+  },
+  navSelects: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  navChip: {
+    minHeight: 36,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  navChipText: {
+    fontSize: 14,
+    fontWeight: '700',
   },
   monthButton: {
     width: 36,
     height: 36,
     borderRadius: 18,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  monthTitle: {
-    fontSize: 16,
-    fontWeight: '800',
+  menuList: {
+    maxHeight: 260,
+    marginBottom: 8,
+  },
+  menuItem: {
+    minHeight: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  menuItemText: {
+    fontSize: 15,
+    fontWeight: '700',
   },
   weekRow: {
     flexDirection: 'row',
-    marginBottom: 6,
+    marginBottom: 4,
   },
   weekday: {
     flex: 1,
     textAlign: 'center',
     fontSize: 12,
     fontWeight: '700',
+    textTransform: 'uppercase',
   },
   dayGrid: {
     flexDirection: 'row',
@@ -1084,13 +1308,48 @@ const styles = StyleSheet.create({
   },
   dayCell: {
     width: '14.285%',
-    height: 40,
+    height: 42,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dayInner: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     alignItems: 'center',
     justifyContent: 'center',
   },
   dayText: {
     fontSize: 14,
+    fontWeight: '600',
+  },
+  calendarFooter: {
+    marginTop: 10,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    gap: 8,
+  },
+  cancelButton: {
+    minHeight: 40,
+    paddingHorizontal: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelText: {
+    fontSize: 15,
     fontWeight: '700',
+  },
+  doneButton: {
+    minHeight: 40,
+    paddingHorizontal: 22,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  doneText: {
+    fontSize: 15,
+    fontWeight: '800',
   },
   timeWrap: {
     flexDirection: 'row',
