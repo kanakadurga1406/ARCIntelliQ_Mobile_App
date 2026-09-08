@@ -499,12 +499,8 @@ const ClaimHistoryScreen = ({navigation, route}: ClaimHistoryScreenProps) => {
       {fabActions.length > 0 ? (
         <View
           style={[
-            styles.bottomBar,
-            {
-              backgroundColor: theme.tabBar,
-              borderTopColor: theme.border,
-              paddingBottom: Math.max(insets.bottom, 8),
-            },
+            styles.fabWrap,
+            {bottom: 20 + insets.bottom, right: 16},
           ]}>
           {fabActions.map(action => (
             <Pressable
@@ -512,10 +508,7 @@ const ClaimHistoryScreen = ({navigation, route}: ClaimHistoryScreenProps) => {
               onPress={() => handlePageAction(action.destination)}
               accessibilityRole="button"
               accessibilityLabel={action.label}
-              style={({pressed}) => [
-                styles.fabSlot,
-                pressed && {opacity: 0.88},
-              ]}>
+              style={({pressed}) => [pressed && {opacity: 0.88}]}>
               <LinearGradient
                 colors={['#3C8CFF', '#1E5EFF']}
                 start={{x: 0, y: 0}}
@@ -526,10 +519,8 @@ const ClaimHistoryScreen = ({navigation, route}: ClaimHistoryScreenProps) => {
                   color="#FFFFFF"
                   size={22}
                 />
+                <Text style={styles.fabLabel}>{action.label}</Text>
               </LinearGradient>
-              <Text style={[styles.fabLabel, {color: theme.textMuted}]}>
-                {action.label}
-              </Text>
             </Pressable>
           ))}
         </View>
@@ -539,10 +530,7 @@ const ClaimHistoryScreen = ({navigation, route}: ClaimHistoryScreenProps) => {
         <View
           style={[
             styles.toast,
-            {
-              bottom: (fabActions.length > 0 ? 88 : 24) + insets.bottom,
-              backgroundColor: theme.text,
-            },
+            {bottom: 24 + insets.bottom, backgroundColor: theme.text},
           ]}>
           <Text style={styles.toastText}>{toast}</Text>
         </View>
@@ -652,29 +640,23 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   listContent: {
-    paddingBottom: 36,
+    paddingBottom: 96,
     paddingHorizontal: 16,
   },
-  bottomBar: {
-    flexDirection: 'row',
+  fabWrap: {
+    position: 'absolute',
+    zIndex: 20,
     alignItems: 'flex-end',
-    justifyContent: 'center',
-    gap: 28,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    paddingTop: 10,
-    overflow: 'visible',
-  },
-  fabSlot: {
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    marginTop: -22,
+    gap: 10,
   },
   fab: {
-    width: 56,
-    height: 56,
+    minHeight: 56,
+    paddingHorizontal: 18,
     borderRadius: 28,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 8,
     shadowColor: '#1E5EFF',
     shadowOffset: {width: 0, height: 8},
     shadowOpacity: 0.32,
@@ -682,10 +664,9 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   fabLabel: {
-    marginTop: 4,
-    fontSize: 10,
-    fontWeight: '600',
-    textAlign: 'center',
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '800',
   },
   centered: {
     flex: 1,
