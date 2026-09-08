@@ -566,9 +566,11 @@ export function DateField({
   flex,
   value,
   onChange,
+  allowFuture = false,
 }: FieldProps & {
   value: string;
   onChange: (value: string) => void;
+  allowFuture?: boolean;
 }) {
   const today = startOfDay(new Date());
   const [open, setOpen] = useState(false);
@@ -593,7 +595,10 @@ export function DateField({
     setMenu(null);
     setCursor(current => {
       const next = new Date(current.getFullYear(), current.getMonth() + offset, 1);
-      if (startOfDay(next) > new Date(today.getFullYear(), today.getMonth(), 1)) {
+      if (
+        !allowFuture &&
+        startOfDay(next) > new Date(today.getFullYear(), today.getMonth(), 1)
+      ) {
         return current;
       }
       return next;
@@ -602,7 +607,10 @@ export function DateField({
 
   const jumpTo = (year: number, month: number) => {
     const next = new Date(year, month, 1);
-    if (startOfDay(next) > new Date(today.getFullYear(), today.getMonth(), 1)) {
+    if (
+      !allowFuture &&
+      startOfDay(next) > new Date(today.getFullYear(), today.getMonth(), 1)
+    ) {
       setCursor(new Date(today.getFullYear(), today.getMonth(), 1));
     } else {
       setCursor(next);
@@ -623,12 +631,12 @@ export function DateField({
     ),
   ];
   const canGoNext =
+    allowFuture ||
     year < today.getFullYear() ||
     (year === today.getFullYear() && month < today.getMonth());
-  const years = Array.from(
-    {length: 21},
-    (_, index) => today.getFullYear() - index,
-  );
+  const years = allowFuture
+    ? Array.from({length: 21}, (_, index) => today.getFullYear() + 5 - index)
+    : Array.from({length: 21}, (_, index) => today.getFullYear() - index);
   const canConfirm = Boolean(draft);
 
   return (
@@ -741,7 +749,9 @@ export function DateField({
               <ScrollView style={styles.menuList} nestedScrollEnabled>
                 {MONTHS.map((name, index) => {
                   const disabled =
-                    year === today.getFullYear() && index > today.getMonth();
+                    !allowFuture &&
+                    year === today.getFullYear() &&
+                    index > today.getMonth();
                   const active = index === month;
                   return (
                     <Pressable
@@ -813,7 +823,7 @@ export function DateField({
                       return <View key={`empty-${index}`} style={styles.dayCell} />;
                     }
                     const date = new Date(year, month, day);
-                    const disabled = startOfDay(date) > today;
+                    const disabled = !allowFuture && startOfDay(date) > today;
                     const isSelected =
                       draft?.getFullYear() === year &&
                       draft.getMonth() === month &&

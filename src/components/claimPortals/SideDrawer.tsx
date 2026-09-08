@@ -25,6 +25,7 @@ type SideDrawerProps = {
   activeDestination: string | null;
   topInset: number;
   bottomInset: number;
+  portalName?: string;
   onClose: () => void;
   onNavigate: (destination: string, label?: string) => void;
 };
@@ -37,6 +38,7 @@ export function SideDrawer({
   activeDestination,
   topInset,
   bottomInset,
+  portalName,
   onClose,
   onNavigate,
 }: SideDrawerProps) {
@@ -98,8 +100,15 @@ export function SideDrawer({
         <View style={styles.header}>
           <AppIcon size={42} />
           <View style={styles.headerCopy}>
+            <Text style={styles.profileNameTop} numberOfLines={1}>
+              {user.name}
+            </Text>
+            {portalName ? (
+              <Text style={styles.portalName} numberOfLines={1}>
+                {portalName}
+              </Text>
+            ) : null}
             <Text style={styles.appName}>ARCintelliQ</Text>
-            <Text style={styles.tagline}>Smarter Business Management</Text>
           </View>
           <Pressable
             onPress={onClose}
@@ -221,15 +230,22 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 10,
   },
-  appName: {
+  profileNameTop: {
     color: '#FFFFFF',
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '800',
   },
-  tagline: {
+  portalName: {
+    marginTop: 2,
+    color: '#D5DDE8',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  appName: {
     marginTop: 2,
     color: '#9AA8BB',
-    fontSize: 11,
+    fontSize: 12,
+    fontWeight: '700',
   },
   closeButton: {
     width: 32,
