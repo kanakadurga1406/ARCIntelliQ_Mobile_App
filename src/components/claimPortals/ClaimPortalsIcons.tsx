@@ -693,17 +693,47 @@ export function KeyMiniIcon({
         <View
           style={[
             styles.keyShaft,
-            {backgroundColor: color, width: size * 0.42, height: size * 0.14},
+            {backgroundColor: color, width: size * 0.42, height: size * 0.16},
           ]}
         />
       </View>
+    </Canvas>
+  );
+}
+
+export function LockMiniIcon({
+  color = colors.onPrimary,
+  size = 16,
+}: IconProps) {
+  return (
+    <View
+      style={{
+        width: size,
+        height: size,
+        alignItems: 'center',
+        justifyContent: 'flex-end',
+      }}>
       <View
         style={[
-          styles.keyBit,
-          {backgroundColor: color, width: size * 0.16, height: size * 0.18},
+          styles.lockShackle,
+          {
+            borderColor: color,
+            width: size * 0.46,
+            height: size * 0.36,
+          },
         ]}
       />
-    </Canvas>
+      <View
+        style={[
+          styles.lockBody,
+          {
+            backgroundColor: color,
+            width: size * 0.7,
+            height: size * 0.46,
+          },
+        ]}
+      />
+    </View>
   );
 }
 
@@ -1175,6 +1205,16 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 3,
     borderBottomLeftRadius: 8,
     borderBottomRightRadius: 8,
+  },
+  lockShackle: {
+    borderWidth: 1.8,
+    borderBottomWidth: 0,
+    borderTopLeftRadius: 6,
+    borderTopRightRadius: 6,
+  },
+  lockBody: {
+    borderRadius: 3,
+    marginTop: -1,
   },
   listLine: {
     height: 2,

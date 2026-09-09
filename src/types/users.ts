@@ -105,6 +105,7 @@ export type ResetPasswordConfig = {
   emptyConfirm: string;
   mismatch: string;
   saveErrorTitle: string;
+  strengthLabels: string[];
   policy: PasswordPolicy;
 };
 

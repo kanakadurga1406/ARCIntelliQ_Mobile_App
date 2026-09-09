@@ -34,6 +34,7 @@ import {
   MoonIcon,
   ShieldMiniIcon,
   KeyMiniIcon,
+  LockMiniIcon,
 } from './ClaimPortalsIcons';
 
 type IconComponent = React.ComponentType<{color?: string; size?: number}>;
@@ -68,6 +69,7 @@ const ICONS: Record<string, IconComponent> = {
   mail: MailMiniIcon,
   shield: ShieldMiniIcon,
   key: KeyMiniIcon,
+  lock: LockMiniIcon,
   globe: GlobeMiniIcon,
   moon: MoonIcon,
   bell: BellMiniIcon,

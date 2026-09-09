@@ -21,13 +21,18 @@ import {
 import {FieldLabel} from '../components/claimPortals/IntakeFields';
 import {UiIcon} from '../components/claimPortals/UiIcon';
 import {colors} from '../theme';
-import {getAvatarColor, getClaimPortalTheme, getInitials} from '../theme/claimPortals';
+import {
+  getAvatarColor,
+  getClaimPortalTheme,
+  getInitials,
+} from '../theme/claimPortals';
 import type {ClaimPortalTheme} from '../theme/claimPortals';
 import type {ResetPasswordConfig} from '../types/users';
 import type {UserResetPasswordScreenProps} from '../types/navigation';
 import {
   DEFAULT_RESET_PASSWORD_CONFIG,
   evaluatePasswordRule,
+  getPasswordStrength,
   mergeResetPasswordConfig,
   passwordMeetsPolicy,
 } from '../utils/userList';
@@ -44,7 +49,58 @@ const DEFAULT_FILTERS = {
   sortBy: 'latest',
 };
 
+const INPUT_BORDER = '#D7E8FF';
+
 type PasswordInput = React.ElementRef<typeof TextInput>;
+
+function ShieldWatermark() {
+  return (
+    <View pointerEvents="none" style={styles.watermark}>
+      <View style={styles.watermarkRing} />
+      <View style={styles.watermarkRingInner} />
+      <View style={styles.watermarkShield}>
+        <View style={styles.watermarkKeyhole} />
+      </View>
+    </View>
+  );
+}
+
+function StrengthMeter({
+  theme,
+  score,
+  label,
+}: {
+  theme: ClaimPortalTheme;
+  score: number;
+  label: string;
+}) {
+  const tone =
+    score >= 3 ? theme.success : score === 2 ? theme.warning : theme.danger;
+
+  return (
+    <View style={styles.strengthRow}>
+      <View style={styles.strengthBars}>
+        {[0, 1, 2, 3].map(index => {
+          const filled = index < score;
+          return (
+            <View
+              key={index}
+              style={[
+                styles.strengthBar,
+                {
+                  backgroundColor: filled ? theme.primary : colors.accentSofter,
+                },
+              ]}
+            />
+          );
+        })}
+      </View>
+      {label ? (
+        <Text style={[styles.strengthLabel, {color: tone}]}>{label}</Text>
+      ) : null}
+    </View>
+  );
+}
 
 function PasswordField({
   theme,
@@ -58,6 +114,7 @@ function PasswordField({
   returnKeyType,
   onSubmitEditing,
   inputRef,
+  footer,
 }: {
   theme: ClaimPortalTheme;
   label: string;
@@ -70,13 +127,14 @@ function PasswordField({
   returnKeyType: 'next' | 'done';
   onSubmitEditing?: () => void;
   inputRef?: React.Ref<PasswordInput>;
+  footer?: React.ReactNode;
 }) {
   const [focused, setFocused] = useState(false);
   const borderColor = error
     ? '#F3B6C1'
     : focused
       ? theme.primary
-      : theme.border;
+      : INPUT_BORDER;
 
   return (
     <View style={styles.field}>
@@ -84,7 +142,7 @@ function PasswordField({
       <View
         style={[
           styles.passwordInput,
-          {backgroundColor: theme.input, borderColor},
+          {backgroundColor: theme.card, borderColor},
         ]}>
         <TextInput
           ref={inputRef}
@@ -117,6 +175,7 @@ function PasswordField({
           />
         </Pressable>
       </View>
+      {footer}
       {error ? (
         <Text style={[styles.fieldError, {color: theme.danger}]}>{error}</Text>
       ) : null}
@@ -169,6 +228,10 @@ const UserResetPasswordScreen = ({
   }, []);
 
   const policy = copy.policy;
+  const strength = useMemo(
+    () => getPasswordStrength(password, policy, copy.strengthLabels),
+    [copy.strengthLabels, password, policy],
+  );
   const allRulesMet = passwordMeetsPolicy(password, policy);
   const passwordsMatch =
     confirmPassword.length > 0 && password === confirmPassword;
@@ -242,15 +305,8 @@ const UserResetPasswordScreen = ({
           automaticallyAdjustKeyboardInsets
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.content}>
-          <View
-            style={[
-              styles.hero,
-              {
-                backgroundColor: theme.card,
-                borderColor: theme.border,
-                shadowColor: theme.shadow,
-              },
-            ]}>
+          <View style={styles.hero}>
+            <ShieldWatermark />
             <View style={styles.heroTop}>
               <Pressable
                 onPress={goBack}
@@ -258,10 +314,10 @@ const UserResetPasswordScreen = ({
                 accessibilityLabel={copy.backLabel}
                 hitSlop={8}
                 style={({pressed}) => [
-                  styles.backButton,
+                  styles.iconButton,
                   {
-                    backgroundColor: theme.chip,
-                    borderColor: theme.border,
+                    backgroundColor: theme.card,
+                    borderColor: INPUT_BORDER,
                     opacity: pressed ? 0.8 : 1,
                   },
                 ]}>
@@ -269,10 +325,14 @@ const UserResetPasswordScreen = ({
                   <ChevronRightIcon color={theme.text} size={9} />
                 </View>
               </Pressable>
-              <View style={styles.heroMark}>
+              <View style={styles.heroTopSpacer} />
+              <View
+                style={[
+                  styles.iconButton,
+                  {backgroundColor: colors.accentSoft, borderColor: INPUT_BORDER},
+                ]}>
                 <KeyMiniIcon color={theme.primary} size={16} />
               </View>
-              <View style={styles.heroTopSpacer} />
             </View>
             <Text style={[styles.kicker, {color: theme.primary}]}>
               {copy.kicker}
@@ -290,7 +350,6 @@ const UserResetPasswordScreen = ({
               styles.accountCard,
               {
                 backgroundColor: theme.card,
-                borderColor: theme.border,
                 shadowColor: theme.shadow,
               },
             ]}>
@@ -320,115 +379,101 @@ const UserResetPasswordScreen = ({
             </View>
           </View>
 
-          <View
-            style={[
-              styles.formCard,
-              {
-                backgroundColor: theme.card,
-                borderColor: theme.border,
-                shadowColor: theme.shadow,
-              },
-            ]}>
-            <PasswordField
-              theme={theme}
-              label={copy.passwordLabel}
-              value={password}
-              onChangeText={value => {
-                setPassword(value);
-                setErrors(current => ({...current, password: undefined}));
-              }}
-              placeholder={copy.passwordPlaceholder}
-              error={errors.password}
-              visible={showPassword}
-              onToggleVisible={() => setShowPassword(current => !current)}
-              returnKeyType="next"
-              onSubmitEditing={() => confirmRef.current?.focus()}
-            />
-            <PasswordField
-              theme={theme}
-              label={copy.confirmLabel}
-              value={confirmPassword}
-              onChangeText={value => {
-                setConfirmPassword(value);
-                setErrors(current => ({
-                  ...current,
-                  confirmPassword: undefined,
-                }));
-              }}
-              placeholder={copy.confirmPlaceholder}
-              error={
-                errors.confirmPassword ||
-                (confirmPassword.length > 0 && !passwordsMatch
-                  ? copy.mismatch
-                  : undefined)
-              }
-              visible={showConfirm}
-              onToggleVisible={() => setShowConfirm(current => !current)}
-              returnKeyType="done"
-              onSubmitEditing={handleSave}
-              inputRef={confirmRef}
-            />
-
-            {passwordsMatch ? (
-              <View
-                style={[styles.matchRow, {backgroundColor: theme.successSoft}]}>
-                <UiIcon name="check" color={theme.success} size={12} />
-                <Text style={[styles.matchText, {color: theme.success}]}>
-                  {copy.matchLabel}
-                </Text>
-              </View>
-            ) : null}
-
-            <View
-              style={[
-                styles.rulesCard,
-                {
-                  backgroundColor: allRulesMet
-                    ? theme.successSoft
-                    : colors.accentSoft,
-                  borderColor: allRulesMet ? theme.success : theme.primary,
-                },
-              ]}>
-              <View style={styles.rulesHead}>
-                <ShieldMiniIcon
-                  color={allRulesMet ? theme.success : theme.primary}
-                  size={16}
+          <PasswordField
+            theme={theme}
+            label={copy.passwordLabel}
+            value={password}
+            onChangeText={value => {
+              setPassword(value);
+              setErrors(current => ({...current, password: undefined}));
+            }}
+            placeholder={copy.passwordPlaceholder}
+            error={errors.password}
+            visible={showPassword}
+            onToggleVisible={() => setShowPassword(current => !current)}
+            returnKeyType="next"
+            onSubmitEditing={() => confirmRef.current?.focus()}
+            footer={
+              password ? (
+                <StrengthMeter
+                  theme={theme}
+                  score={strength.score}
+                  label={strength.label}
                 />
-                <Text
-                  style={[
-                    styles.rulesTitle,
-                    {color: allRulesMet ? theme.success : theme.primary},
-                  ]}>
-                  {copy.rulesTitle}
-                </Text>
-              </View>
-              {policy.rules.map(rule => {
-                const met = evaluatePasswordRule(password, rule, policy);
-                return (
-                  <View key={rule.id} style={styles.ruleRow}>
-                    <View
-                      style={[
-                        styles.ruleDot,
-                        {
-                          backgroundColor: met ? theme.success : 'transparent',
-                          borderColor: met ? theme.success : theme.primary,
-                        },
-                      ]}>
-                      {met ? (
-                        <UiIcon name="check" color="#FFFFFF" size={9} />
-                      ) : null}
-                    </View>
-                    <Text
-                      style={[
-                        styles.ruleText,
-                        {color: met ? theme.success : theme.primary},
-                      ]}>
-                      {rule.label}
-                    </Text>
+              ) : null
+            }
+          />
+          <PasswordField
+            theme={theme}
+            label={copy.confirmLabel}
+            value={confirmPassword}
+            onChangeText={value => {
+              setConfirmPassword(value);
+              setErrors(current => ({
+                ...current,
+                confirmPassword: undefined,
+              }));
+            }}
+            placeholder={copy.confirmPlaceholder}
+            error={
+              errors.confirmPassword ||
+              (confirmPassword.length > 0 && !passwordsMatch
+                ? copy.mismatch
+                : undefined)
+            }
+            visible={showConfirm}
+            onToggleVisible={() => setShowConfirm(current => !current)}
+            returnKeyType="done"
+            onSubmitEditing={handleSave}
+            inputRef={confirmRef}
+            footer={
+              passwordsMatch ? (
+                <View style={styles.matchRow}>
+                  <View
+                    style={[styles.ruleDot, {backgroundColor: theme.success}]}>
+                    <UiIcon name="check" color="#FFFFFF" size={9} />
                   </View>
-                );
-              })}
+                  <Text style={[styles.matchText, {color: theme.success}]}>
+                    {copy.matchLabel}
+                  </Text>
+                </View>
+              ) : null
+            }
+          />
+
+          <View style={[styles.rulesCard, {backgroundColor: colors.accentSoft}]}>
+            <View style={styles.rulesHead}>
+              <ShieldMiniIcon color={theme.primary} size={16} />
+              <Text style={[styles.rulesTitle, {color: theme.primary}]}>
+                {copy.rulesTitle}
+              </Text>
             </View>
+            {policy.rules.map(rule => {
+              const met = evaluatePasswordRule(password, rule, policy);
+              return (
+                <View key={rule.id} style={styles.ruleRow}>
+                  <View
+                    style={[
+                      styles.ruleDot,
+                      {
+                        backgroundColor: met ? theme.success : 'transparent',
+                        borderColor: met ? theme.success : '#C5D3E4',
+                      },
+                    ]}>
+                    {met ? (
+                      <UiIcon name="check" color="#FFFFFF" size={9} />
+                    ) : null}
+                  </View>
+                  <Text
+                    style={[
+                      styles.ruleText,
+                      {color: met ? theme.text : theme.textMuted},
+                    ]}>
+                    {rule.label}
+                  </Text>
+                </View>
+              );
+            })}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -437,8 +482,7 @@ const UserResetPasswordScreen = ({
         style={[
           styles.footer,
           {
-            backgroundColor: theme.card,
-            borderTopColor: theme.border,
+            backgroundColor: theme.page,
             paddingBottom: Math.max(insets.bottom, 8),
           },
         ]}>
@@ -449,7 +493,11 @@ const UserResetPasswordScreen = ({
             accessibilityLabel={copy.backLabel}
             style={({pressed}) => [
               styles.footerBack,
-              {borderColor: theme.border, opacity: pressed ? 0.86 : 1},
+              {
+                backgroundColor: theme.card,
+                borderColor: INPUT_BORDER,
+                opacity: pressed ? 0.86 : 1,
+              },
             ]}>
             <Text style={[styles.footerBackText, {color: theme.text}]}>
               {copy.backLabel}
@@ -466,9 +514,10 @@ const UserResetPasswordScreen = ({
               {
                 backgroundColor: theme.primary,
                 opacity: !canSave || pressed ? 0.45 : 1,
+                shadowColor: theme.primary,
               },
             ]}>
-            <UiIcon name="check" color={theme.onPrimary} size={14} />
+            <UiIcon name="lock" color={theme.onPrimary} size={14} />
             <Text style={[styles.footerSaveText, {color: theme.onPrimary}]}>
               {saving ? copy.savingLabel : copy.saveLabel}
             </Text>
@@ -502,25 +551,64 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 20,
+    paddingTop: 4,
+    paddingBottom: 16,
   },
   hero: {
-    borderRadius: 20,
-    borderWidth: 1,
-    padding: 16,
-    marginBottom: 12,
-    shadowOffset: {width: 0, height: 8},
-    shadowOpacity: 0.05,
-    shadowRadius: 14,
-    elevation: 2,
+    marginBottom: 16,
+    overflow: 'hidden',
+    minHeight: 132,
+  },
+  watermark: {
+    position: 'absolute',
+    right: -8,
+    top: 18,
+    width: 128,
+    height: 128,
+    alignItems: 'center',
+    justifyContent: 'center',
+    opacity: 0.22,
+  },
+  watermarkRing: {
+    position: 'absolute',
+    width: 118,
+    height: 118,
+    borderRadius: 59,
+    borderWidth: 10,
+    borderColor: '#BFD8FF',
+  },
+  watermarkRingInner: {
+    position: 'absolute',
+    width: 78,
+    height: 78,
+    borderRadius: 39,
+    borderWidth: 8,
+    borderColor: '#D7E8FF',
+  },
+  watermarkShield: {
+    width: 46,
+    height: 54,
+    backgroundColor: '#9EC4FF',
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
+    borderBottomLeftRadius: 22,
+    borderBottomRightRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  watermarkKeyhole: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#EAF3FF',
+    marginTop: -2,
   },
   heroTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 14,
+    marginBottom: 16,
   },
-  backButton: {
+  iconButton: {
     width: 40,
     height: 40,
     borderRadius: 12,
@@ -532,15 +620,6 @@ const styles = StyleSheet.create({
     transform: [{rotate: '180deg'}],
     marginRight: 2,
   },
-  heroMark: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    marginLeft: 8,
-    backgroundColor: colors.accentSoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   heroTopSpacer: {
     flex: 1,
   },
@@ -551,26 +630,26 @@ const styles = StyleSheet.create({
   },
   pageTitle: {
     marginTop: 4,
-    fontSize: 26,
-    lineHeight: 32,
+    fontSize: 28,
+    lineHeight: 34,
     fontWeight: '800',
   },
   pageSubtitle: {
     marginTop: 6,
     fontSize: 13,
     lineHeight: 19,
+    maxWidth: '78%',
   },
   accountCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 16,
-    borderWidth: 1,
+    borderRadius: 18,
     padding: 14,
-    marginBottom: 12,
-    shadowOffset: {width: 0, height: 6},
-    shadowOpacity: 0.04,
-    shadowRadius: 10,
-    elevation: 1,
+    marginBottom: 18,
+    shadowOffset: {width: 0, height: 8},
+    shadowOpacity: 0.06,
+    shadowRadius: 16,
+    elevation: 3,
   },
   avatar: {
     width: 44,
@@ -604,22 +683,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
-  formCard: {
-    borderRadius: 20,
-    borderWidth: 1,
-    padding: 16,
-    shadowOffset: {width: 0, height: 8},
-    shadowOpacity: 0.05,
-    shadowRadius: 14,
-    elevation: 2,
-  },
   field: {
-    marginBottom: 12,
+    marginBottom: 14,
   },
   passwordInput: {
     minHeight: 50,
     borderRadius: 14,
-    borderWidth: 1,
+    borderWidth: 1.5,
     flexDirection: 'row',
     alignItems: 'center',
     paddingLeft: 14,
@@ -643,24 +713,40 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
+  strengthRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 8,
+  },
+  strengthBars: {
+    flex: 1,
+    flexDirection: 'row',
+    gap: 6,
+  },
+  strengthBar: {
+    flex: 1,
+    height: 6,
+    borderRadius: 999,
+  },
+  strengthLabel: {
+    fontSize: 12,
+    fontWeight: '800',
+  },
   matchRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    marginBottom: 12,
+    gap: 8,
+    marginTop: 8,
   },
   matchText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
   },
   rulesCard: {
-    borderRadius: 14,
-    borderWidth: 1,
-    padding: 12,
-    gap: 8,
+    borderRadius: 16,
+    padding: 14,
+    gap: 10,
   },
   rulesHead: {
     flexDirection: 'row',
@@ -670,32 +756,31 @@ const styles = StyleSheet.create({
   },
   rulesTitle: {
     flex: 1,
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '800',
   },
   ruleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
   },
   ruleDot: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
     borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
   },
   ruleText: {
     flex: 1,
-    fontSize: 12,
-    lineHeight: 17,
+    fontSize: 13,
+    lineHeight: 18,
     fontWeight: '600',
   },
   footer: {
     paddingHorizontal: 16,
-    paddingTop: 12,
-    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingTop: 8,
   },
   footerActions: {
     flexDirection: 'row',
@@ -703,33 +788,37 @@ const styles = StyleSheet.create({
   },
   copyright: {
     textAlign: 'center',
-    marginTop: 8,
+    marginTop: 10,
     marginBottom: 4,
     fontSize: 11,
   },
   footerBack: {
     flex: 1,
-    minHeight: 50,
-    borderRadius: 14,
-    borderWidth: 1,
+    minHeight: 52,
+    borderRadius: 16,
+    borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
   },
   footerBackText: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '800',
   },
   footerSave: {
-    flex: 1.35,
-    minHeight: 50,
-    borderRadius: 14,
+    flex: 1,
+    minHeight: 52,
+    borderRadius: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
+    shadowOffset: {width: 0, height: 6},
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 3,
   },
   footerSaveText: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '800',
   },
 });

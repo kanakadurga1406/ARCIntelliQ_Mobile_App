@@ -153,21 +153,21 @@ export function buildPasswordRules(
   if (policy.requireUpper) {
     rules.push({
       id: 'upper',
-      label: 'One uppercase letter',
+      label: 'One uppercase letter (A, B, C...)',
       pattern: '[A-Z]',
     });
   }
   if (policy.requireLower) {
     rules.push({
       id: 'lower',
-      label: 'One lowercase letter',
+      label: 'One lowercase letter (a, b, c...)',
       pattern: '[a-z]',
     });
   }
   if (policy.requireNumber) {
     rules.push({
       id: 'number',
-      label: 'One number',
+      label: 'One number (0, 1, 2...)',
       pattern: '\\d',
     });
   }
@@ -216,6 +216,7 @@ export const DEFAULT_RESET_PASSWORD_CONFIG: ResetPasswordConfig = {
   emptyConfirm: 'Confirm the new password.',
   mismatch: 'Passwords do not match.',
   saveErrorTitle: 'Unable to reset password',
+  strengthLabels: ['Weak', 'Fair', 'Strong', 'Excellent'],
   policy: DEFAULT_PASSWORD_POLICY,
 };
 
@@ -292,6 +293,12 @@ export function mergeResetPasswordConfig(
     emptyConfirm: asString(raw.emptyConfirm, base.emptyConfirm),
     mismatch: asString(raw.mismatch, base.mismatch),
     saveErrorTitle: asString(raw.saveErrorTitle, base.saveErrorTitle),
+    strengthLabels:
+      Array.isArray(raw.strengthLabels) &&
+      raw.strengthLabels.every(item => typeof item === 'string') &&
+      raw.strengthLabels.length > 0
+        ? (raw.strengthLabels as string[])
+        : base.strengthLabels,
     policy: mergePasswordPolicy(raw.policy ?? incoming),
   };
 }
@@ -338,6 +345,25 @@ export function passwordMeetsPolicy(
     return false;
   }
   return policy.rules.every(rule => evaluatePasswordRule(value, rule, policy));
+}
+
+export function getPasswordStrength(
+  value: string,
+  policy: PasswordPolicy,
+  labels: string[] = DEFAULT_RESET_PASSWORD_CONFIG.strengthLabels,
+): {score: number; label: string; metCount: number; total: number} {
+  const total = Math.max(1, policy.rules.length);
+  const metCount = policy.rules.filter(rule =>
+    evaluatePasswordRule(value, rule, policy),
+  ).length;
+
+  if (!value) {
+    return {score: 0, label: '', metCount: 0, total};
+  }
+
+  const score = Math.max(1, Math.min(4, Math.round((metCount / total) * 4)));
+  const label = labels[score - 1] ?? labels[labels.length - 1] ?? '';
+  return {score, label, metCount, total};
 }
 
 export function isStrongPassword(
