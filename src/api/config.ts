@@ -2,9 +2,9 @@
  * Live backend. Screens call src/api/*; those modules hit these URLs
  * when USE_STUB_API is false.
  *
- * Claim Handler sign-in is the Laravel web form:
- * GET  /admin  → CSRF + session cookies
- * POST /login  → email, password, portal=unified, _token
+ * Claim Handler sign-in is the mobile JSON login:
+ * POST /mobile/login → email, password, portal=unified
+ * Response includes user_id, which is stored and sent to OTP verify.
  */
 export const USE_STUB_API = false;
 
@@ -27,3 +27,7 @@ export const FORGOT_PASSWORD_URL = `${API_ORIGIN}/forgot-password`;
 export const BUSINESS_URL = `${API_BASE_URL}/business`;
 
 export const BUSINESS_ENTER_URL = `${API_BASE_URL}/business/enter`;
+
+export const RESET_PASSWORD_URL = `${API_BASE_URL}/reset-password`;
+
+export const RESET_PASSWORD_SEND_LINK_URL = `${API_BASE_URL}/reset-password/send-link`;

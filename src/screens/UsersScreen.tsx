@@ -12,6 +12,7 @@ import {
 import LinearGradient from 'react-native-linear-gradient';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {fetchClaimPortalsDashboard} from '../api/business';
+import {sendResetPasswordLink} from '../api/resetPassword';
 import {clearSession} from '../api/session';
 import {
   createBusinessFromExisting,
@@ -323,6 +324,40 @@ const UsersScreen = ({navigation, route}: UsersScreenProps) => {
       });
     },
     [navigation, portalId, portalName, user],
+  );
+
+  const requestSendLink = useCallback(
+    (target: AppUser) => {
+      setSelectedUser(null);
+      setDetailUser(null);
+      showDialog({
+        title: 'Send reset link',
+        message: `Email a password reset link to ${target.email}?`,
+        buttons: [
+          {label: 'Cancel'},
+          {
+            label: 'Send link',
+            tone: 'primary',
+            onPress: () => {
+              sendResetPasswordLink({email: target.email})
+                .then(result => {
+                  showToast(
+                    result.message || `Reset link sent to ${target.email}.`,
+                  );
+                })
+                .catch(error => {
+                  showToast(
+                    error instanceof Error
+                      ? error.message
+                      : 'Unable to send the reset link.',
+                  );
+                });
+            },
+          },
+        ],
+      });
+    },
+    [showDialog, showToast],
   );
 
   const requestDelete = useCallback(
@@ -686,8 +721,8 @@ const UsersScreen = ({navigation, route}: UsersScreenProps) => {
             openAccess(target);
             return;
           }
-          if (action === 'reset') {
-            openReset(target);
+          if (action === 'send-link') {
+            requestSendLink(target);
             return;
           }
           requestDelete(target);

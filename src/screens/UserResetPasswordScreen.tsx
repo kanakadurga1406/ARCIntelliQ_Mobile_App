@@ -11,7 +11,8 @@ import {
   View,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {fetchUsersPage, resetUserPassword} from '../api/users';
+import {resetUserPassword} from '../api/resetPassword';
+import {fetchUsersPage} from '../api/users';
 import {AppDialog, useAppDialog} from '../components/claimPortals/AppDialog';
 import {
   ChevronRightIcon,
@@ -263,9 +264,9 @@ const UserResetPasswordScreen = ({
     setSaving(true);
     try {
       await resetUserPassword({
-        userId: targetUser.id,
-        password,
-        confirmPassword,
+        email: targetUser.email,
+        new_password: password,
+        new_password_confirmation: confirmPassword,
       });
       navigation.navigate({
         name: 'Users',

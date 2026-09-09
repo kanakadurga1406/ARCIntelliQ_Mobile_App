@@ -10,11 +10,9 @@ import type {
   VerifyOtpPayload,
 } from '../types/auth';
 import {
-  API_BASE_URL,
   FORGOT_PASSWORD_URL,
   LOGIN_API_URL,
   LOGIN_PAGE_URL,
-  LOGIN_URL,
   OTP_RESEND_URL,
   OTP_URL,
 } from './config';
@@ -26,7 +24,12 @@ import {
 } from './client';
 import {clearBusinessCache} from './business';
 import {clearCookies, getCookie} from './cookies';
-import {clearPendingOtp, getPendingOtp, setPendingOtp} from './session';
+import {
+  clearPendingOtp,
+  getLoginUserId,
+  getPendingOtp,
+  setPendingOtp,
+} from './session';
 
 function decodeEntities(value: string): string {
   return value
@@ -71,10 +74,6 @@ function looksLikeOtpPage(html: string, url: string): boolean {
   );
 }
 
-function looksLikeLoginForm(html: string): boolean {
-  return /id="loginForm"/i.test(html) && /name="password"/i.test(html);
-}
-
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -93,103 +92,107 @@ function readString(...values: unknown[]): string {
   return '';
 }
 
-function extractUserId(data: unknown, raw = '', url = ''): string {
-  const root = asRecord(data);
-  const nested = asRecord(root?.data) || root;
-  const user = asRecord(nested?.user) || asRecord(root?.user);
+function readRecordValue(
+  record: Record<string, unknown> | null,
+  names: string[],
+): string {
+  if (!record) {
+    return '';
+  }
 
-  const fromJson = readString(
-    root?.user_id,
-    nested?.user_id,
-    user?.user_id,
-    root?.userId,
-    nested?.userId,
-    user?.id,
-  );
+  for (const name of names) {
+    const direct = readString(record[name]);
+    if (direct) {
+      return direct;
+    }
+  }
+
+  for (const [key, value] of Object.entries(record)) {
+    if (names.some(name => name.toLowerCase() === key.toLowerCase())) {
+      const match = readString(value);
+      if (match) {
+        return match;
+      }
+    }
+  }
+
+  return '';
+}
+
+function findUserIdField(value: unknown, depth = 0): string {
+  if (depth > 6) {
+    return '';
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = findUserIdField(item, depth + 1);
+      if (found) {
+        return found;
+      }
+    }
+    return '';
+  }
+
+  const record = asRecord(value);
+  if (!record) {
+    return '';
+  }
+
+  const direct = readRecordValue(record, ['user_id', 'userId', 'userid']);
+  if (direct) {
+    return direct;
+  }
+
+  const user = asRecord(record.user);
+  const fromUser = readRecordValue(user, ['user_id', 'userId', 'id']);
+  if (fromUser) {
+    return fromUser;
+  }
+
+  for (const nested of Object.values(record)) {
+    if (nested && typeof nested === 'object') {
+      const found = findUserIdField(nested, depth + 1);
+      if (found) {
+        return found;
+      }
+    }
+  }
+
+  return '';
+}
+
+function extractUserId(data: unknown, raw = '', url = ''): string {
+  const fromJson = findUserIdField(data);
   if (fromJson) {
     return fromJson;
   }
 
-  const fromRaw = raw.match(/"user_id"\s*:\s*"?(\d+)"?/i);
-  if (fromRaw?.[1]) {
-    return fromRaw[1];
+  const rootId = readRecordValue(asRecord(data), ['id']);
+  if (rootId) {
+    return rootId;
+  }
+
+  const patterns = [
+    /"user_id"\s*:\s*"?(\d+)"?/i,
+    /'user_id'\s*:\s*'?(\d+)'?/i,
+  ];
+
+  for (const pattern of patterns) {
+    const match = raw.match(pattern);
+    if (match?.[1]?.trim()) {
+      return match[1].trim();
+    }
   }
 
   try {
     const parsed = new URL(url);
     const fromQuery =
-      parsed.searchParams.get('user_id') ||
-      parsed.searchParams.get('userId') ||
-      parsed.searchParams.get('id');
+      parsed.searchParams.get('user_id') || parsed.searchParams.get('userId');
     if (fromQuery?.trim()) {
       return fromQuery.trim();
     }
-    const fromPath = parsed.pathname.match(
-      /\/(?:user|users|otp|verify)\/(\d+)/i,
-    );
-    if (fromPath?.[1]) {
-      return fromPath[1];
-    }
   } catch {
     // Ignore invalid URLs.
-  }
-
-  const fromHtml =
-    raw.match(/name=["']user_id["'][^>]*value=["']([^"']+)["']/i) ||
-    raw.match(/value=["']([^"']+)["'][^>]*name=["']user_id["']/i) ||
-    raw.match(/data-user-id=["']([^"']+)["']/i);
-
-  return fromHtml?.[1] || '';
-}
-
-async function fetchJsonUserId(
-  email: string,
-  password: string,
-  webResult: {
-    json: unknown;
-    raw: string;
-    url: string;
-  },
-): Promise<string> {
-  let userId = extractUserId(webResult.json, webResult.raw, webResult.url);
-  if (userId) {
-    return userId;
-  }
-
-  if (webResult.url && webResult.url !== LOGIN_URL) {
-    const landed = await siteRequest(webResult.url);
-    userId = extractUserId(landed.json, landed.raw, landed.url);
-    if (userId) {
-      return userId;
-    }
-  }
-
-  const mobileLogin = await siteRequest(LOGIN_API_URL, {
-    method: 'POST',
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      email,
-      password,
-    }),
-  });
-  console.log('[ARC login] mobile status', mobileLogin.status);
-  console.log('[ARC login] mobile json', mobileLogin.json);
-  userId = extractUserId(mobileLogin.json, mobileLogin.raw, mobileLogin.url);
-  if (userId) {
-    return userId;
-  }
-
-  for (const path of ['/user', '/me', '/profile']) {
-    const page = await siteRequest(`${API_BASE_URL}${path}`, {
-      headers: {Accept: 'application/json'},
-    });
-    userId = extractUserId(page.json, page.raw, page.url);
-    if (userId) {
-      return userId;
-    }
   }
 
   return '';
@@ -299,35 +302,26 @@ export async function startClaimHandlerLogin(
   clearPendingOtp();
   clearBusinessCache();
 
+  const email = credentials.email.trim();
   const page = await siteRequest(LOGIN_PAGE_URL);
   const csrf = extractCsrfToken(page.html);
-  const email = credentials.email.trim();
-
-  const body = new URLSearchParams({
-    _token: csrf,
-    portal: 'unified',
-    email,
-    password: credentials.password,
-  });
-  if (credentials.remember) {
-    body.set('remember', '1');
-  }
-
-  const result = await siteRequest(LOGIN_URL, {
+  const result = await siteRequest(LOGIN_API_URL, {
     method: 'POST',
     headers: {
       Accept: 'application/json',
-      'Content-Type': 'application/x-www-form-urlencoded',
+      'Content-Type': 'application/json',
       'X-CSRF-TOKEN': csrf,
-      Origin: LOGIN_URL.replace(/\/login$/, ''),
-      Referer: LOGIN_PAGE_URL,
     },
-    body: body.toString(),
+    body: JSON.stringify({
+      email,
+      password: credentials.password,
+      portal: 'unified',
+      remember: credentials.remember ? 1 : undefined,
+    }),
   });
 
   console.log('[ARC login] status', result.status);
   console.log('[ARC login] contentType', result.contentType);
-  console.log('[ARC login] finalUrl', result.url);
   console.log('[ARC login] json', result.json);
   console.log(
     '[ARC login] raw',
@@ -344,26 +338,26 @@ export async function startClaimHandlerLogin(
     );
   }
 
-  if (result.html && looksLikeLoginForm(result.html)) {
+  const body = asRecord(result.json) || {};
+  const nested = asRecord(body.data) || body;
+  const userId = extractUserId(result.json, result.raw, result.url);
+  const resolvedEmail = readString(nested.email, body.email, email);
+
+  if (!userId) {
     throw new ApiError(
-      extractHtmlError(result.html) || 'Invalid email or password',
-      401,
+      'Unable to start verification. The login response did not include user_id.',
+      500,
+      result.json,
     );
   }
 
-  const userId = await fetchJsonUserId(email, credentials.password, result);
-  const resolvedEmail = readString(
-    asRecord(result.json)?.email,
-    asRecord(asRecord(result.json)?.data)?.email,
-    email,
-  );
   setPendingOtp({email: resolvedEmail, userId});
-  console.log('[ARC login] stored user_id', userId);
+  console.log('[ARC login] stored user_id', getLoginUserId());
 
   return {
     email: resolvedEmail,
     userId,
-    expiresIn: 300,
+    expiresIn: Number(nested.expiresIn) || 300,
   };
 }
 
@@ -371,8 +365,10 @@ export async function verifyClaimHandlerOtp(
   payload: VerifyOtpPayload,
 ): Promise<AuthSession> {
   const pending = getPendingOtp();
-  const email = payload.email?.trim() || pending?.email || '';
-  const userId = String(payload.userId || pending?.userId || '').trim();
+  const email = pending?.email || payload.email?.trim() || '';
+  const userId = String(
+    getLoginUserId() || pending?.userId || payload.userId || '',
+  ).trim();
   const otp = payload.otp.trim();
   const verifyBody = {
     user_id: /^\d+$/.test(userId) ? Number(userId) : userId,
@@ -432,8 +428,8 @@ export async function resendClaimHandlerOtp(
   payload: ResendOtpPayload,
 ): Promise<OtpChallenge> {
   const pending = getPendingOtp();
-  const email = payload.email?.trim() || pending?.email || '';
-  const userId = String(payload.userId || pending?.userId || '').trim();
+  const email = pending?.email || payload.email?.trim() || '';
+  const userId = getLoginUserId() || String(payload.userId || '').trim();
 
   const result = await siteRequest(OTP_RESEND_URL, {
     method: 'POST',
