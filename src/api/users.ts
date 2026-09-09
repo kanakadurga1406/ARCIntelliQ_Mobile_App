@@ -1,6 +1,7 @@
 import type {
   AppUser,
   CreateBusinessPayload,
+  ResetUserPasswordPayload,
   UserFormValues,
   UserListQuery,
   UsersPageResult,
@@ -12,6 +13,7 @@ import {
   stubCreateBusinessFromUser,
   stubCreateUser,
   stubDeleteUser,
+  stubResetUserPassword,
   stubUpdateUser,
   stubUsersPage,
 } from './stubs/users';
@@ -195,6 +197,44 @@ export async function deleteUser(id: string): Promise<void> {
   } catch (error) {
     console.log('[ARC users] delete fallback', error);
     stubDeleteUser(id);
+  }
+}
+
+export async function resetUserPassword(
+  payload: ResetUserPasswordPayload,
+): Promise<AppUser> {
+  if (USE_STUB_API) {
+    await wait(220);
+    return stubResetUserPassword(
+      payload.userId,
+      payload.password,
+      payload.confirmPassword,
+    );
+  }
+
+  try {
+    const saved = await apiRequest<AppUser>(
+      `/users/${payload.userId}/reset-password`,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          password: payload.password,
+          confirmPassword: payload.confirmPassword,
+        }),
+      },
+    );
+    return saved ?? stubResetUserPassword(
+      payload.userId,
+      payload.password,
+      payload.confirmPassword,
+    );
+  } catch (error) {
+    console.log('[ARC users] reset-password fallback', error);
+    return stubResetUserPassword(
+      payload.userId,
+      payload.password,
+      payload.confirmPassword,
+    );
   }
 }
 

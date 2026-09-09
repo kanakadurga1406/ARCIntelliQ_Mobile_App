@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {fetchClaimPortalsDashboard} from '../api/claimPortals';
+import {fetchClaimPortalsDashboard} from '../api/business';
 import {clearSession} from '../api/session';
 import {
   createBusinessFromExisting,
@@ -187,11 +187,13 @@ const UsersScreen = ({navigation, route}: UsersScreenProps) => {
     if (!savedUserName || !savedUserAction) {
       return;
     }
-    showToast(
+    const toastMessage =
       savedUserAction === 'created'
         ? `${savedUserName} was added.`
-        : `${savedUserName} was updated.`,
-    );
+        : savedUserAction === 'updated'
+          ? `${savedUserName} was updated.`
+          : `${savedUserName}'s password was updated.`;
+    showToast(toastMessage);
     loadPage(1, 'replace');
     navigation.setParams({
       savedUserName: undefined,
@@ -308,6 +310,20 @@ const UsersScreen = ({navigation, route}: UsersScreenProps) => {
     setAccessUser(target);
     setAccessOpen(true);
   }, []);
+
+  const openReset = useCallback(
+    (target: AppUser) => {
+      setSelectedUser(null);
+      setDetailUser(null);
+      navigation.navigate('UserResetPassword', {
+        user,
+        portalId,
+        portalName,
+        targetUser: target,
+      });
+    },
+    [navigation, portalId, portalName, user],
+  );
 
   const requestDelete = useCallback(
     (target: AppUser) => {
@@ -670,6 +686,10 @@ const UsersScreen = ({navigation, route}: UsersScreenProps) => {
             openAccess(target);
             return;
           }
+          if (action === 'reset') {
+            openReset(target);
+            return;
+          }
           requestDelete(target);
         }}
       />
@@ -681,6 +701,7 @@ const UsersScreen = ({navigation, route}: UsersScreenProps) => {
         onClose={() => setDetailUser(null)}
         onEdit={() => detailUser && openEdit(detailUser)}
         onAccess={() => detailUser && openAccess(detailUser)}
+        onReset={() => detailUser && openReset(detailUser)}
         onDelete={() => detailUser && requestDelete(detailUser)}
       />
 

@@ -206,10 +206,7 @@ export function parseEnteredPortal(payload: unknown): EnteredPortal | null {
       nested.business_logo_url,
       business?.business_logo_url,
     ),
-    menu: [
-      ...menu,
-      {id: 'sign-out', label: 'Sign out', icon: 'logout', destination: 'sign-out'},
-    ],
+    menu,
   };
 }
 
@@ -465,7 +462,6 @@ export function dashboardFromBusinesses(
         destination: 'portals',
       },
       {id: 'profile', label: 'Profile', icon: 'profile', destination: 'profile'},
-      {id: 'sign-out', label: 'Sign out', icon: 'logout', destination: 'sign-out'},
     ],
     bottomTabs: [],
     home: {subtitle: '', actions: []},

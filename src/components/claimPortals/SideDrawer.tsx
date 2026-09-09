@@ -125,7 +125,14 @@ export function SideDrawer({
           contentContainerStyle={styles.menu}>
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>MENU</Text>
-            {menuItems.map(item => {
+            {menuItems
+            .filter(
+              item =>
+                item.destination !== 'sign-out' &&
+                item.id !== 'sign-out' &&
+                item.label.toLowerCase() !== 'sign out',
+            )
+            .map(item => {
               const isActive = item.destination === activeDestination;
               const content = (
                 <>

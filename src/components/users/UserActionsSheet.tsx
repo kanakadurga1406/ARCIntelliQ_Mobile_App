@@ -5,7 +5,7 @@ import type {ClaimPortalTheme} from '../../theme/claimPortals';
 import {BottomSheet} from '../claimPortals/BottomSheet';
 import {UiIcon} from '../claimPortals/UiIcon';
 
-type UserAction = 'edit' | 'access' | 'delete';
+export type UserAction = 'edit' | 'access' | 'reset' | 'delete';
 
 type UserActionsSheetProps = {
   visible: boolean;
@@ -23,6 +23,7 @@ const ACTIONS: Array<{
 }> = [
   {id: 'edit', label: 'Edit user', icon: 'pencil'},
   {id: 'access', label: 'Manage portal access', icon: 'key'},
+  {id: 'reset', label: 'Reset password', icon: 'shield'},
   {id: 'delete', label: 'Delete user', icon: 'trash', tone: 'danger'},
 ];
 

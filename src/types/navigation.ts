@@ -26,13 +26,19 @@ export type RootStackParamList = {
     portalId?: string;
     portalName?: string;
     savedUserName?: string;
-    savedUserAction?: 'created' | 'updated';
+    savedUserAction?: 'created' | 'updated' | 'password';
   };
   UserSetup: {
     user: ClaimHandlerUser;
     portalId?: string;
     portalName?: string;
     editingUser?: AppUser;
+  };
+  UserResetPassword: {
+    user: ClaimHandlerUser;
+    portalId?: string;
+    portalName?: string;
+    targetUser: AppUser;
   };
 };
 
@@ -94,4 +100,9 @@ export type UsersScreenProps = NativeStackScreenProps<
 export type UserSetupScreenProps = NativeStackScreenProps<
   RootStackParamList,
   'UserSetup'
+>;
+
+export type UserResetPasswordScreenProps = NativeStackScreenProps<
+  RootStackParamList,
+  'UserResetPassword'
 >;

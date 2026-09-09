@@ -1,5 +1,6 @@
 import React from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
+import {colors} from '../../theme';
 import type {AppUser} from '../../types/users';
 import type {ClaimPortalTheme} from '../../theme/claimPortals';
 import {getAvatarColor, getInitials} from '../../theme/claimPortals';
@@ -14,6 +15,7 @@ type UserDetailSheetProps = {
   onClose: () => void;
   onEdit: () => void;
   onAccess: () => void;
+  onReset: () => void;
   onDelete: () => void;
 };
 
@@ -24,6 +26,7 @@ export function UserDetailSheet({
   onClose,
   onEdit,
   onAccess,
+  onReset,
   onDelete,
 }: UserDetailSheetProps) {
   const isActive = user?.status === 'active';
@@ -126,6 +129,20 @@ export function UserDetailSheet({
               </Text>
             </View>
           </View>
+
+          <Pressable
+            onPress={onReset}
+            accessibilityRole="button"
+            accessibilityLabel="Reset password"
+            style={[
+              styles.resetAction,
+              {backgroundColor: colors.accentSoft, borderColor: theme.primary},
+            ]}>
+            <UiIcon name="shield" color={theme.primary} />
+            <Text style={[styles.actionText, {color: theme.primary}]}>
+              Reset password
+            </Text>
+          </Pressable>
 
           <View style={styles.actions}>
             <Pressable
@@ -241,6 +258,16 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     fontSize: 13,
     fontWeight: '700',
+  },
+  resetAction: {
+    minHeight: 46,
+    borderRadius: 14,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 8,
   },
   actions: {
     flexDirection: 'row',

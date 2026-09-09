@@ -113,6 +113,37 @@ export function isValidEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 }
 
+export const PASSWORD_SPECIAL = '@$!%*?&#';
+
+export type PasswordChecks = {
+  length: boolean;
+  upper: boolean;
+  lower: boolean;
+  number: boolean;
+  special: boolean;
+};
+
+export function getPasswordChecks(value: string): PasswordChecks {
+  return {
+    length: value.length >= 8,
+    upper: /[A-Z]/.test(value),
+    lower: /[a-z]/.test(value),
+    number: /\d/.test(value),
+    special: /[@$!%*?&#]/.test(value),
+  };
+}
+
+export function isStrongPassword(value: string): boolean {
+  const checks = getPasswordChecks(value);
+  return (
+    checks.length &&
+    checks.upper &&
+    checks.lower &&
+    checks.number &&
+    checks.special
+  );
+}
+
 export const IDLE_MINUTE_PRESETS = [15, 30, 60, 120] as const;
 
 export function splitName(name: string): {firstName: string; lastName: string} {

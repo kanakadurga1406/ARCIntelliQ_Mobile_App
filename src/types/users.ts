@@ -87,3 +87,9 @@ export type CreateBusinessPayload = {
   userId: string;
   businessName: string;
 };
+
+export type ResetUserPasswordPayload = {
+  userId: string;
+  password: string;
+  confirmPassword: string;
+};

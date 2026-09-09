@@ -14,6 +14,7 @@ import SmartSearchScreen from '../screens/SmartSearchScreen';
 import ClaimHistoryScreen from '../screens/ClaimHistoryScreen';
 import UsersScreen from '../screens/UsersScreen';
 import UserSetupScreen from '../screens/UserSetupScreen';
+import UserResetPasswordScreen from '../screens/UserResetPasswordScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -44,6 +45,10 @@ const AppNavigator = () => {
         <Stack.Screen name="ClaimHistory" component={ClaimHistoryScreen} />
         <Stack.Screen name="Users" component={UsersScreen} />
         <Stack.Screen name="UserSetup" component={UserSetupScreen} />
+        <Stack.Screen
+          name="UserResetPassword"
+          component={UserResetPasswordScreen}
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );

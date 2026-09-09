@@ -9,6 +9,7 @@ import type {
 import {
   applyUserFilters,
   displayName,
+  isStrongPassword,
   paginateUsers,
 } from '../../utils/userList';
 
@@ -303,6 +304,29 @@ export function stubDeleteUser(id: string): void {
     throw new Error('User not found.');
   }
   users = users.filter(item => item.id !== id);
+}
+
+export function stubResetUserPassword(
+  userId: string,
+  password: string,
+  confirmPassword: string,
+): AppUser {
+  const current = users.find(item => item.id === userId);
+  if (!current) {
+    throw new Error('User not found.');
+  }
+  if (!password.trim()) {
+    throw new Error('Enter a new password.');
+  }
+  if (password !== confirmPassword) {
+    throw new Error('Passwords do not match.');
+  }
+  if (!isStrongPassword(password)) {
+    throw new Error(
+      'Use at least 8 characters with uppercase, lowercase, number, and a special character (@$!%*?&#).',
+    );
+  }
+  return current;
 }
 
 export function stubCreateBusinessFromUser(
