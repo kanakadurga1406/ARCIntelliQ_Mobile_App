@@ -634,6 +634,40 @@ export function ShieldMiniIcon({
   );
 }
 
+export function KeyMiniIcon({
+  color = colors.primary,
+  size = 16,
+}: IconProps) {
+  return (
+    <Canvas size={size}>
+      <View style={styles.keyRow}>
+        <View
+          style={[
+            styles.keyHead,
+            {
+              borderColor: color,
+              width: size * 0.4,
+              height: size * 0.4,
+            },
+          ]}
+        />
+        <View
+          style={[
+            styles.keyShaft,
+            {backgroundColor: color, width: size * 0.42, height: size * 0.14},
+          ]}
+        />
+      </View>
+      <View
+        style={[
+          styles.keyBit,
+          {backgroundColor: color, width: size * 0.16, height: size * 0.18},
+        ]}
+      />
+    </Canvas>
+  );
+}
+
 export function ListMiniIcon({color = colors.onPrimary, size = 16}: IconProps) {
   return (
     <Canvas size={size}>
@@ -1161,5 +1195,23 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1.8,
     transform: [{rotate: '45deg'}],
     marginTop: -3,
+  },
+  keyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  keyHead: {
+    borderWidth: 1.7,
+    borderRadius: 20,
+  },
+  keyShaft: {
+    borderRadius: 1,
+    marginLeft: -1,
+  },
+  keyBit: {
+    position: 'absolute',
+    right: 1,
+    bottom: 2,
+    borderRadius: 1,
   },
 });

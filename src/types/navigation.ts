@@ -20,6 +20,9 @@ export type RootStackParamList = {
     portalId: string;
     portalName: string;
   };
+  Users: {
+    user: ClaimHandlerUser;
+  };
 };
 
 export type SplashScreenProps = NativeStackScreenProps<
@@ -70,4 +73,9 @@ export type SmartSearchScreenProps = NativeStackScreenProps<
 export type ClaimHistoryScreenProps = NativeStackScreenProps<
   RootStackParamList,
   'ClaimHistory'
+>;
+
+export type UsersScreenProps = NativeStackScreenProps<
+  RootStackParamList,
+  'Users'
 >;

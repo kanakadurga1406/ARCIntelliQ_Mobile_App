@@ -40,6 +40,7 @@ import type {
 } from '../types/claims';
 import type {ClaimHistoryScreenProps} from '../types/navigation';
 import {mergeUniqueClaims} from '../utils/claimList';
+import {portalMenuItems} from '../utils/hubMenu';
 
 const SIDEBAR_DESTINATIONS = new Set([
   'smart-search',
@@ -229,6 +230,10 @@ const ClaimHistoryScreen = ({navigation, route}: ClaimHistoryScreenProps) => {
       }
       if (destination === 'faqs') {
         navigation.navigate('Faqs');
+        return;
+      }
+      if (destination === 'users') {
+        navigation.navigate('Users', {user});
         return;
       }
       if (destination === 'add-claim') {
@@ -544,7 +549,7 @@ const ClaimHistoryScreen = ({navigation, route}: ClaimHistoryScreenProps) => {
         theme={theme}
         user={user}
         portalName={portalName}
-        menuItems={menuItems}
+        menuItems={portalMenuItems(menuItems)}
         activeDestination="portals"
         topInset={insets.top}
         bottomInset={insets.bottom}

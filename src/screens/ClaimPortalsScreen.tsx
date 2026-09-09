@@ -46,6 +46,7 @@ import type {ClaimPortalsScreenProps} from '../types/navigation';
 import {INTAKE_CONFIG} from '../api/stubs/intake';
 import {PROFILE_PAGE} from '../api/stubs/profile';
 import {mergeUniquePortals} from '../utils/portalList';
+import {hubMenuItems} from '../utils/hubMenu';
 
 const DEFAULT_FILTERS: PortalFilters = {
   status: 'all',
@@ -54,7 +55,6 @@ const DEFAULT_FILTERS: PortalFilters = {
   sortBy: 'latest',
 };
 
-const HUB_HIDDEN_MENU = new Set(['dashboard', 'add-claim', 'smart-search']);
 
 function portalValue(portal: ClaimPortal, field: string): string {
   const fromValues = portal.values?.[field];
@@ -397,6 +397,10 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
         navigation.navigate('SmartSearch');
         return;
       }
+      if (destination === 'users') {
+        navigation.navigate('Users', {user});
+        return;
+      }
       showToast('This option will connect when the live API is ready.');
     },
     [
@@ -406,6 +410,7 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
       showToast,
       signOut,
       tabDestinations,
+      user,
     ],
   );
 
@@ -647,9 +652,7 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
         visible={drawerOpen}
         theme={theme}
         user={user}
-        menuItems={(dashboard?.menuItems ?? []).filter(
-          item => !HUB_HIDDEN_MENU.has(item.destination),
-        )}
+        menuItems={hubMenuItems(dashboard?.menuItems ?? [])}
         activeDestination={activeTab}
         topInset={insets.top}
         bottomInset={insets.bottom}

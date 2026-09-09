@@ -26,6 +26,12 @@ export const FAQS: FaqItem[] = [
       'Tap the plus button on the bottom bar or choose Add Claim from the side menu. Select a portal, enter the claim title, and save. Live submit to the server will be connected when the backend is ready.',
   },
   {
+    id: 'users',
+    question: 'Where do I manage users?',
+    answer:
+      'Open the side menu from Claim Portals and choose Users. This is a workspace-level screen for roles and portal access, so it is not listed inside an individual claim portal menu. Search, filter by business, add a user, or create a business from an existing user from that screen.',
+  },
+  {
     id: 'profile',
     question: 'How do I sign out?',
     answer:

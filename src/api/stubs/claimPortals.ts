@@ -265,6 +265,7 @@ export const CLAIM_PORTALS_DASHBOARD: ClaimPortalsDashboard = {
   ],
   menuItems: [
     {id: 'claim-portals', label: 'Claim Portals', icon: 'grid', destination: 'portals'},
+    {id: 'users', label: 'Users', icon: 'users', destination: 'users'},
     {id: 'dashboard', label: 'Dashboard', icon: 'dashboard', destination: 'dashboard'},
     {id: 'add-claim', label: 'Add Claim', icon: 'plus', destination: 'add-claim'},
     {id: 'smart-search', label: 'Smart Search', icon: 'search', destination: 'smart-search'},
