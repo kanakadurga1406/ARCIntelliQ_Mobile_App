@@ -44,6 +44,7 @@ import type {
 } from '../types/claimPortals';
 import type {ClaimPortalsScreenProps} from '../types/navigation';
 import {mergeUniquePortals} from '../utils/portalList';
+import {hubMenuItems} from '../utils/hubMenu';
 
 const DEFAULT_FILTERS: PortalFilters = {
   status: 'all',
@@ -52,7 +53,6 @@ const DEFAULT_FILTERS: PortalFilters = {
   sortBy: 'latest',
 };
 
-const HUB_HIDDEN_MENU = new Set(['dashboard', 'add-claim', 'smart-search']);
 
 function portalValue(portal: ClaimPortal, field: string): string {
   const fromValues = portal.values?.[field];
@@ -613,9 +613,7 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
         visible={drawerOpen}
         theme={theme}
         user={user}
-        menuItems={(dashboard?.menuItems ?? []).filter(
-          item => !HUB_HIDDEN_MENU.has(item.destination),
-        )}
+        menuItems={hubMenuItems(dashboard?.menuItems ?? [])}
         activeDestination={activeTab}
         topInset={insets.top}
         bottomInset={insets.bottom}

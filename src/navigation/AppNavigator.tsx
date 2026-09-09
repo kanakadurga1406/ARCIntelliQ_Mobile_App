@@ -12,6 +12,7 @@ import ClaimPortalsScreen from '../screens/ClaimPortalsScreen';
 import FaqsScreen from '../screens/FaqsScreen';
 import SmartSearchScreen from '../screens/SmartSearchScreen';
 import ClaimHistoryScreen from '../screens/ClaimHistoryScreen';
+import UsersScreen from '../screens/UsersScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -40,6 +41,7 @@ const AppNavigator = () => {
         <Stack.Screen name="Faqs" component={FaqsScreen} />
         <Stack.Screen name="SmartSearch" component={SmartSearchScreen} />
         <Stack.Screen name="ClaimHistory" component={ClaimHistoryScreen} />
+        <Stack.Screen name="Users" component={UsersScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

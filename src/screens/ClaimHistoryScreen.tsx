@@ -46,6 +46,7 @@ const SIDEBAR_DESTINATIONS = new Set([
   'home',
   'sign-out',
   'faqs',
+  'users',
 ]);
 
 function isFabAction(action: PageAction): boolean {
@@ -163,6 +164,10 @@ const ClaimHistoryScreen = ({navigation, route}: ClaimHistoryScreenProps) => {
         navigation.navigate('Faqs');
         return;
       }
+      if (destination === 'users') {
+        navigation.navigate('Users', {user, portalId, portalName});
+        return;
+      }
       if (destination === 'add-claim') {
         setAddClaimOpen(true);
         return;
@@ -181,7 +186,7 @@ const ClaimHistoryScreen = ({navigation, route}: ClaimHistoryScreenProps) => {
       }
       showToast('This option will connect when the live API is ready.');
     },
-    [navigation, showToast, user],
+    [navigation, portalId, portalName, showToast, user],
   );
 
   const refresh = useCallback(async () => {
