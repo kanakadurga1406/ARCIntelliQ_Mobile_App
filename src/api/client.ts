@@ -69,6 +69,11 @@ function withSessionHeaders(
     headers['X-XSRF-TOKEN'] = decodeURIComponent(xsrf);
   }
 
+  const token = getSession()?.token?.trim();
+  if (token && token !== 'session' && !headers.Authorization) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
   return headers;
 }
 
@@ -146,7 +151,7 @@ export async function apiRequest<T>(
   path: string,
   options: RequestInit = {},
 ): Promise<T> {
-  const token = getSession()?.token;
+  const token = getSession()?.token?.trim();
   const headers: Record<string, string> = {
     Accept: 'application/json',
     'Content-Type': 'application/json',
@@ -158,7 +163,7 @@ export async function apiRequest<T>(
     headers.Cookie = cookie;
   }
 
-  if (token && !headers.Authorization) {
+  if (token && token !== 'session' && !headers.Authorization) {
     headers.Authorization = `Bearer ${token}`;
   }
 

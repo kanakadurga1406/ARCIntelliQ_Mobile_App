@@ -12,20 +12,20 @@ import {
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {
+  clearBusinessCache,
+  enterBusiness,
   fetchClaimPortalsDashboard,
   fetchClaimPortalsPage,
   PORTAL_PAGE_SIZE,
-} from '../api/claimPortals';
-import {clearSession} from '../api/session';
+  profileFromUser,
+} from '../api/business';
+import {clearSession, getSession} from '../api/session';
 import {AppDialog, useAppDialog} from '../components/claimPortals/AppDialog';
 import {AppHeader} from '../components/claimPortals/AppHeader';
 import {
-  BusinessRequestsSheet,
   FilterSheet,
   PortalActionsSheet,
 } from '../components/claimPortals/ClaimPortalSheets';
-import {IntakeWizard} from '../components/claimPortals/IntakeWizard';
-import type {IntakeDraft} from '../types/intake';
 import {PortalCard} from '../components/claimPortals/PortalCard';
 import {PortalListControls} from '../components/claimPortals/PortalListControls';
 import {SideDrawer} from '../components/claimPortals/SideDrawer';
@@ -43,8 +43,6 @@ import type {
   StatusChip,
 } from '../types/claimPortals';
 import type {ClaimPortalsScreenProps} from '../types/navigation';
-import {INTAKE_CONFIG} from '../api/stubs/intake';
-import {PROFILE_PAGE} from '../api/stubs/profile';
 import {mergeUniquePortals} from '../utils/portalList';
 
 const DEFAULT_FILTERS: PortalFilters = {
@@ -139,8 +137,6 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
   const [activeTab, setActiveTab] = useState('portals');
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
-  const [requestsOpen, setRequestsOpen] = useState(false);
-  const [addClaimOpen, setAddClaimOpen] = useState(false);
   const [selectedPortal, setSelectedPortal] = useState<ClaimPortal | null>(null);
   const [query, setQuery] = useState('');
   const [searchFocusToken, setSearchFocusToken] = useState(0);
@@ -277,31 +273,25 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
         route.params.initialTab === 'home'
           ? 'portals'
           : route.params.initialTab;
-      const shouldOpenAddClaim = route.params.openAddClaim;
       if (nextTab) {
         setActiveTab(nextTab);
-      }
-      if (shouldOpenAddClaim) {
-        setAddClaimOpen(true);
-      }
-      if (nextTab || shouldOpenAddClaim) {
         navigation.setParams({initialTab: undefined, openAddClaim: undefined});
       }
     }, [
       navigation,
       route.params.initialTab,
-      route.params.openAddClaim,
     ]),
   );
 
   const refreshPortalsTab = useCallback(async () => {
     setIsRefreshing(true);
     try {
-      await loadPortalPage(1, 'replace');
+      clearBusinessCache();
+      await Promise.all([loadPortalPage(1, 'replace'), loadDashboard(true)]);
     } finally {
       setIsRefreshing(false);
     }
-  }, [loadPortalPage]);
+  }, [loadDashboard, loadPortalPage]);
 
   const visiblePortals = useMemo(
     () =>
@@ -325,6 +315,7 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
 
   const signOut = useCallback(() => {
     clearSession();
+    clearBusinessCache();
     navigation.reset({
       index: 0,
       routes: [{name: 'PortalSelect'}],
@@ -342,24 +333,32 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
     });
   }, [showDialog, signOut]);
 
-  const openAddClaim = useCallback(() => {
-    setAddClaimOpen(true);
-  }, []);
-
   const openSearch = useCallback(() => {
     setActiveTab('portals');
     setSearchFocusToken(current => current + 1);
   }, []);
 
   const openClaimHistory = useCallback(
-    (portal: ClaimPortal) => {
-      navigation.navigate('ClaimHistory', {
-        user,
-        portalId: portal.id,
-        portalName: portal.name,
-      });
+    async (portal: ClaimPortal) => {
+      try {
+        const entered = await enterBusiness(
+          portal.businessId || portal.id,
+          getSession()?.token,
+        );
+        navigation.navigate('ClaimHistory', {
+          user,
+          portalId: entered.businessId || portal.businessId || portal.id,
+          portalName: entered.businessName || portal.name,
+        });
+      } catch (error) {
+        showToast(
+          error instanceof Error
+            ? error.message
+            : 'Unable to enter this business.',
+        );
+      }
     },
-    [navigation, user],
+    [navigation, showToast, user],
   );
 
   const handleDestination = useCallback(
@@ -373,20 +372,12 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
         setActiveTab(destination);
         return;
       }
-      if (destination === 'add-claim') {
-        openAddClaim();
-        return;
-      }
       if (destination === 'search') {
         openSearch();
         return;
       }
       if (destination === 'sign-out') {
         signOut();
-        return;
-      }
-      if (destination === 'requests') {
-        setRequestsOpen(true);
         return;
       }
       if (destination === 'faqs') {
@@ -401,29 +392,11 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
     },
     [
       navigation,
-      openAddClaim,
       openSearch,
       showToast,
       signOut,
       tabDestinations,
     ],
-  );
-
-  const handleAddClaimSubmit = useCallback(
-    (draft: IntakeDraft) => {
-      setAddClaimOpen(false);
-      const portalName = portals.find(item => item.id === draft.portalId)?.name;
-      const label =
-        [draft.claimType, draft.driverLastName || draft.callerName]
-          .filter(Boolean)
-          .join(' · ') || 'Intake';
-      showToast(
-        portalName
-          ? `${label} submitted for ${portalName}. Live API comes next.`
-          : `${label} submitted on this device. Live API comes next.`,
-      );
-    },
-    [portals, showToast],
   );
 
   const handleStatusChange = (status: string) => {
@@ -452,11 +425,6 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
 
     if (destination === 'view') {
       openClaimHistory(portal);
-      return;
-    }
-    if (destination === 'delete') {
-      setPortals(current => current.filter(item => item.id !== portal.id));
-      showToast(`${portal.name} removed from this device list.`);
       return;
     }
     handleDestination(destination);
@@ -609,10 +577,8 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
           <ProfileTabBody
             theme={theme}
             user={user}
-            page={dashboard?.profile ?? PROFILE_PAGE}
-            extraFields={
-              dashboard?.profileFields ?? dashboard?.profile?.fields ?? []
-            }
+            page={profileFromUser(user)}
+            extraFields={[]}
             onSignOut={requestSignOut}
           />
         ) : null}
@@ -677,26 +643,6 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
         actions={dashboard?.portalActions ?? []}
         onClose={() => setSelectedPortal(null)}
         onAction={handlePortalAction}
-      />
-
-      <BusinessRequestsSheet
-        visible={requestsOpen}
-        theme={theme}
-        rows={dashboard?.requestSummary ?? []}
-        onClose={() => setRequestsOpen(false)}
-        onViewAll={() => {
-          setRequestsOpen(false);
-          setActiveTab('dashboard');
-        }}
-      />
-
-      <IntakeWizard
-        visible={addClaimOpen}
-        theme={theme}
-        portals={portals}
-        config={dashboard?.intake ?? INTAKE_CONFIG}
-        onClose={() => setAddClaimOpen(false)}
-        onSubmit={handleAddClaimSubmit}
       />
 
       <AppDialog

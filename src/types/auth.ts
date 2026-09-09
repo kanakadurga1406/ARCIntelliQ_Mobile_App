@@ -14,9 +14,18 @@ export type LoginCredentials = {
   remember?: boolean;
 };
 
+export type AuthLanding = {
+  showClaimPortals: boolean;
+  autoEnter: boolean;
+  portalCount: number;
+  businessId: string;
+  businessName: string;
+};
+
 export type AuthSession = {
   token: string;
   user: ClaimHandlerUser;
+  landing: AuthLanding;
 };
 
 export type OtpChallenge = {

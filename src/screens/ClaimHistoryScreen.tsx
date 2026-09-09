@@ -11,10 +11,8 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {fetchClaimPortalsDashboard} from '../api/claimPortals';
-import {CLAIM_PAGE_SIZE, fetchClaimHistory} from '../api/claims';
-import {clearSession} from '../api/session';
-import {INTAKE_CONFIG} from '../api/stubs/intake';
+import {clearBusinessCache} from '../api/business';
+import {clearSession, getEnteredPortal} from '../api/session';
 import {ClaimCard} from '../components/claims/ClaimCard';
 import {ClaimDetailSheet} from '../components/claims/ClaimDetailSheet';
 import {ClaimFilterSheet} from '../components/claims/ClaimFilterSheet';
@@ -39,7 +37,6 @@ import type {
   ClaimRecord,
 } from '../types/claims';
 import type {ClaimHistoryScreenProps} from '../types/navigation';
-import {mergeUniqueClaims} from '../utils/claimList';
 
 const SIDEBAR_DESTINATIONS = new Set([
   'smart-search',
@@ -89,7 +86,10 @@ function useDebouncedValue<T>(value: T, delay: number): T {
 
 const ClaimHistoryScreen = ({navigation, route}: ClaimHistoryScreenProps) => {
   const insets = useSafeAreaInsets();
+  const entered = getEnteredPortal();
   const {user, portalId, portalName} = route.params;
+  const businessName = entered?.businessName || portalName;
+  const businessId = entered?.businessId || portalId;
   const theme = useMemo(() => getClaimPortalTheme('light'), []);
 
   const [query, setQuery] = useState('');
@@ -98,17 +98,17 @@ const ClaimHistoryScreen = ({navigation, route}: ClaimHistoryScreenProps) => {
   const [claims, setClaims] = useState<ClaimRecord[]>([]);
   const [listTotal, setListTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
-  const [isListLoading, setIsListLoading] = useState(true);
+  const [hasMore, setHasMore] = useState(false);
+  const [isListLoading, setIsListLoading] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [listError, setListError] = useState('');
   const [filterOpen, setFilterOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [addClaimOpen, setAddClaimOpen] = useState(false);
-  const [menuItems, setMenuItems] = useState<NavItem[]>([]);
+  const [menuItems, setMenuItems] = useState<NavItem[]>(entered?.menu ?? []);
   const [portals, setPortals] = useState<ClaimPortal[]>([]);
-  const [intakeConfig, setIntakeConfig] = useState<IntakeConfig>(INTAKE_CONFIG);
+  const [intakeConfig, setIntakeConfig] = useState<IntakeConfig | null>(null);
   const [selectedClaim, setSelectedClaim] = useState<ClaimRecord | null>(null);
   const [toast, setToast] = useState('');
 
@@ -123,93 +123,21 @@ const ClaimHistoryScreen = ({navigation, route}: ClaimHistoryScreenProps) => {
     setTimeout(() => setToast(''), 2200);
   }, []);
 
-  const loadPage = useCallback(
-    async (nextPage: number, mode: 'replace' | 'append') => {
-      if (mode === 'append') {
-        if (loadingMoreRef.current || !hasMoreRef.current) {
-          return;
-        }
-        loadingMoreRef.current = true;
-        setIsLoadingMore(true);
-      } else {
-        requestSeqRef.current += 1;
-        hasMoreRef.current = true;
-        if (claimsRef.current.length === 0) {
-          setIsListLoading(true);
-        }
-      }
-
-      const requestId = requestSeqRef.current;
-      setListError('');
-
-      try {
-        const result = await fetchClaimHistory({
-          portalId,
-          portalName,
-          page: nextPage,
-          limit: CLAIM_PAGE_SIZE,
-          search: debouncedQuery,
-          filters,
-        });
-
-        if (requestId !== requestSeqRef.current) {
-          return;
-        }
-
-        setConfig(result.config);
-        hasMoreRef.current = result.list.hasMore;
-        setHasMore(result.list.hasMore);
-        setPage(result.list.page);
-        setListTotal(result.list.total);
-        setClaims(current => {
-          const next =
-            mode === 'replace'
-              ? result.list.items
-              : mergeUniqueClaims(current, result.list.items);
-          claimsRef.current = next;
-          return next;
-        });
-      } catch (error) {
-        if (requestId !== requestSeqRef.current) {
-          return;
-        }
-        const message =
-          error instanceof Error ? error.message : 'Unable to load claims.';
-        if (mode === 'replace' && claimsRef.current.length === 0) {
-          setListError(message);
-        } else {
-          showToast(message);
-        }
-      } finally {
-        if (mode === 'append') {
-          loadingMoreRef.current = false;
-          setIsLoadingMore(false);
-        } else if (requestId === requestSeqRef.current) {
-          setIsListLoading(false);
-        }
-      }
-    },
-    [debouncedQuery, filters, portalId, portalName, showToast],
-  );
+  const loadPage = useCallback(async () => {
+    setIsListLoading(false);
+    setHasMore(false);
+    setListError('');
+  }, []);
 
   useEffect(() => {
-    loadPage(1, 'replace');
+    loadPage();
   }, [loadPage]);
 
   useEffect(() => {
-    let cancelled = false;
-    fetchClaimPortalsDashboard()
-      .then(data => {
-        if (!cancelled) {
-          setMenuItems(data.menuItems);
-          setPortals(data.portals);
-          setIntakeConfig(data.intake ?? INTAKE_CONFIG);
-        }
-      })
-      .catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
+    const portal = getEnteredPortal();
+    if (portal?.menu.length) {
+      setMenuItems(portal.menu);
+    }
   }, []);
 
   const handleDrawerNavigate = useCallback(
@@ -217,10 +145,14 @@ const ClaimHistoryScreen = ({navigation, route}: ClaimHistoryScreenProps) => {
       setDrawerOpen(false);
       if (destination === 'sign-out') {
         clearSession();
+        clearBusinessCache();
         navigation.reset({
           index: 0,
           routes: [{name: 'PortalSelect'}],
         });
+        return;
+      }
+      if (destination === 'claims') {
         return;
       }
       if (destination === 'smart-search') {
@@ -255,7 +187,7 @@ const ClaimHistoryScreen = ({navigation, route}: ClaimHistoryScreenProps) => {
   const refresh = useCallback(async () => {
     setIsRefreshing(true);
     try {
-      await loadPage(1, 'replace');
+      await loadPage();
     } finally {
       setIsRefreshing(false);
     }
@@ -290,9 +222,9 @@ const ClaimHistoryScreen = ({navigation, route}: ClaimHistoryScreenProps) => {
         [draft.claimType, draft.driverLastName || draft.callerName]
           .filter(Boolean)
           .join(' · ') || 'Intake';
-      showToast(`${label} submitted for ${portalName}. Live API comes next.`);
+      showToast(`${label} submitted for ${businessName}. Live API comes next.`);
     },
-    [portalName, showToast],
+    [businessName, showToast],
   );
 
   const fabActions = (config?.pageActions ?? []).filter(isFabAction);
@@ -310,13 +242,13 @@ const ClaimHistoryScreen = ({navigation, route}: ClaimHistoryScreenProps) => {
         name: portalName,
         status: 'active',
         createdAt: '',
-        businessId: '',
+        businessId,
         meta: [],
         metrics: [],
       },
       ...portals,
     ];
-  }, [portalId, portalName, portals]);
+  }, [businessId, portalId, portalName, portals]);
 
   const handleClaimAction = (action: PortalAction) => {
     const claim = selectedClaim;
@@ -349,7 +281,7 @@ const ClaimHistoryScreen = ({navigation, route}: ClaimHistoryScreenProps) => {
         <View style={styles.centered}>
           <Text style={[styles.helper, {color: theme.danger}]}>{listError}</Text>
           <Pressable
-            onPress={() => loadPage(1, 'replace')}
+            onPress={() => loadPage()}
             style={[styles.retry, {backgroundColor: theme.primary}]}>
             <Text style={[styles.retryText, {color: theme.onPrimary}]}>
               Try again
@@ -428,7 +360,7 @@ const ClaimHistoryScreen = ({navigation, route}: ClaimHistoryScreenProps) => {
         }
         ListEmptyComponent={
           <Text style={[styles.empty, {color: theme.textSecondary}]}>
-            No claims match your search or filters.
+            {businessName} is open. Claims will show here when that API is connected.
           </Text>
         }
         ListFooterComponent={
@@ -452,7 +384,7 @@ const ClaimHistoryScreen = ({navigation, route}: ClaimHistoryScreenProps) => {
         showsVerticalScrollIndicator={false}
         onEndReached={() => {
           if (!isListLoading && !isRefreshing) {
-            loadPage(page + 1, 'append');
+            loadPage();
           }
         }}
         onEndReachedThreshold={0.35}
@@ -486,12 +418,12 @@ const ClaimHistoryScreen = ({navigation, route}: ClaimHistoryScreenProps) => {
         </Pressable>
         <View style={styles.headerCopy}>
           <Text style={[styles.headerTitle, {color: theme.text}]} numberOfLines={1}>
-            {config?.title || 'Claim History'}
+            {businessName}
           </Text>
           <Text
             style={[styles.headerSubtitle, {color: theme.textSecondary}]}
             numberOfLines={1}>
-            {config?.subtitle || portalName}
+            {businessId ? `Business ID ${businessId}` : 'Entered business'}
           </Text>
         </View>
         <View style={styles.headerSpacer} />
@@ -543,7 +475,7 @@ const ClaimHistoryScreen = ({navigation, route}: ClaimHistoryScreenProps) => {
         visible={drawerOpen}
         theme={theme}
         user={user}
-        portalName={portalName}
+        portalName={businessName}
         menuItems={menuItems}
         activeDestination="portals"
         topInset={insets.top}
@@ -575,15 +507,17 @@ const ClaimHistoryScreen = ({navigation, route}: ClaimHistoryScreenProps) => {
         onAction={handleClaimAction}
       />
 
-      <IntakeWizard
-        visible={addClaimOpen}
-        theme={theme}
-        portals={intakePortals}
-        config={intakeConfig}
-        initialValues={{portalId}}
-        onClose={() => setAddClaimOpen(false)}
-        onSubmit={handleAddClaimSubmit}
-      />
+      {intakeConfig ? (
+        <IntakeWizard
+          visible={addClaimOpen}
+          theme={theme}
+          portals={intakePortals}
+          config={intakeConfig}
+          initialValues={{portalId}}
+          onClose={() => setAddClaimOpen(false)}
+          onSubmit={handleAddClaimSubmit}
+        />
+      ) : null}
     </View>
   );
 };

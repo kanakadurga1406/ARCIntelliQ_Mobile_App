@@ -188,6 +188,25 @@ export function DotsIcon({color = colors.textMuted, size = 16}: IconProps) {
   );
 }
 
+export function CrownIcon({color = '#C9A227', size = 12}: IconProps) {
+  return (
+    <Canvas size={size}>
+      <View style={[styles.crownBand, {backgroundColor: color, width: size * 0.78}]} />
+      <View style={styles.crownPoints}>
+        <View style={[styles.crownPoint, {borderBottomColor: color}]} />
+        <View
+          style={[
+            styles.crownPoint,
+            styles.crownPointTall,
+            {borderBottomColor: color},
+          ]}
+        />
+        <View style={[styles.crownPoint, {borderBottomColor: color}]} />
+      </View>
+    </Canvas>
+  );
+}
+
 export function ChevronRightIcon({
   color = colors.textMuted,
   size = 8,
@@ -846,6 +865,30 @@ const styles = StyleSheet.create({
   canvas: {
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  crownBand: {
+    position: 'absolute',
+    bottom: 1,
+    height: 2.5,
+    borderRadius: 1,
+  },
+  crownPoints: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 1,
+    marginBottom: 3,
+  },
+  crownPoint: {
+    width: 0,
+    height: 0,
+    borderLeftWidth: 3,
+    borderRightWidth: 3,
+    borderBottomWidth: 5,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+  },
+  crownPointTall: {
+    borderBottomWidth: 7,
   },
   menuLine: {
     height: 2,
