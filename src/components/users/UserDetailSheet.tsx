@@ -1,6 +1,5 @@
 import React from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
-import {colors} from '../../theme';
 import type {AppUser} from '../../types/users';
 import type {ClaimPortalTheme} from '../../theme/claimPortals';
 import {getAvatarColor, getInitials} from '../../theme/claimPortals';
@@ -130,20 +129,6 @@ export function UserDetailSheet({
             </View>
           </View>
 
-          <Pressable
-            onPress={onReset}
-            accessibilityRole="button"
-            accessibilityLabel="Reset password"
-            style={[
-              styles.resetAction,
-              {backgroundColor: colors.accentSoft, borderColor: theme.primary},
-            ]}>
-            <UiIcon name="shield" color={theme.primary} />
-            <Text style={[styles.actionText, {color: theme.primary}]}>
-              Reset password
-            </Text>
-          </Pressable>
-
           <View style={styles.actions}>
             <Pressable
               onPress={onEdit}
@@ -166,6 +151,18 @@ export function UserDetailSheet({
               ]}>
               <UiIcon name="key" color={theme.primary} />
               <Text style={[styles.actionText, {color: theme.text}]}>Access</Text>
+            </Pressable>
+            <Pressable
+              onPress={onReset}
+              accessibilityRole="button"
+              accessibilityLabel="Reset password"
+              style={[
+                styles.action,
+                styles.actionOutline,
+                {backgroundColor: theme.card, borderColor: theme.border},
+              ]}>
+              <UiIcon name="shield" color={theme.primary} />
+              <Text style={[styles.actionText, {color: theme.text}]}>Reset</Text>
             </Pressable>
             <Pressable
               onPress={onDelete}
@@ -259,22 +256,14 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
   },
-  resetAction: {
-    minHeight: 46,
-    borderRadius: 14,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 8,
-  },
   actions: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
   },
   action: {
-    flex: 1,
+    flexGrow: 1,
+    flexBasis: '47%',
     minHeight: 46,
     borderRadius: 14,
     alignItems: 'center',

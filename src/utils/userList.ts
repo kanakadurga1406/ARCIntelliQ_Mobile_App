@@ -1,5 +1,8 @@
 import type {
   AppUser,
+  PasswordPolicy,
+  PasswordRule,
+  ResetPasswordConfig,
   UserAccessAssignment,
   UserFilters,
   UserFormValues,
@@ -113,35 +116,235 @@ export function isValidEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 }
 
-export const PASSWORD_SPECIAL = '@$!%*?&#';
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
 
-export type PasswordChecks = {
-  length: boolean;
-  upper: boolean;
-  lower: boolean;
-  number: boolean;
-  special: boolean;
+function asString(value: unknown, fallback: string): string {
+  return typeof value === 'string' && value.trim() ? value : fallback;
+}
+
+function asBool(value: unknown, fallback: boolean): boolean {
+  return typeof value === 'boolean' ? value : fallback;
+}
+
+function asNumber(value: unknown, fallback: number): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function escapeCharClass(value: string): string {
+  return value.replace(/[\\\]^-]/g, '\\$&');
+}
+
+export function buildPasswordRules(
+  policy: Omit<PasswordPolicy, 'rules'>,
+): PasswordRule[] {
+  const rules: PasswordRule[] = [
+    {
+      id: 'length',
+      label: `At least ${policy.minLength} characters`,
+      minLength: policy.minLength,
+    },
+  ];
+
+  if (policy.requireUpper) {
+    rules.push({
+      id: 'upper',
+      label: 'One uppercase letter',
+      pattern: '[A-Z]',
+    });
+  }
+  if (policy.requireLower) {
+    rules.push({
+      id: 'lower',
+      label: 'One lowercase letter',
+      pattern: '[a-z]',
+    });
+  }
+  if (policy.requireNumber) {
+    rules.push({
+      id: 'number',
+      label: 'One number',
+      pattern: '\\d',
+    });
+  }
+  if (policy.requireSpecial) {
+    rules.push({
+      id: 'special',
+      label: `One special character (${policy.specialChars})`,
+      pattern: `[${escapeCharClass(policy.specialChars)}]`,
+    });
+  }
+
+  return rules;
+}
+
+const DEFAULT_POLICY_FLAGS: Omit<PasswordPolicy, 'rules'> = {
+  minLength: 8,
+  requireUpper: true,
+  requireLower: true,
+  requireNumber: true,
+  requireSpecial: true,
+  specialChars: '@$!%*?&#',
 };
 
-export function getPasswordChecks(value: string): PasswordChecks {
+export const DEFAULT_PASSWORD_POLICY: PasswordPolicy = {
+  ...DEFAULT_POLICY_FLAGS,
+  rules: buildPasswordRules(DEFAULT_POLICY_FLAGS),
+};
+
+export const DEFAULT_RESET_PASSWORD_CONFIG: ResetPasswordConfig = {
+  kicker: 'USER SECURITY',
+  title: 'Reset password',
+  subtitle: 'Set a secure new password for this user account.',
+  accountLabel: 'USER ACCOUNT',
+  passwordLabel: 'New password',
+  passwordPlaceholder: 'Enter new password',
+  confirmLabel: 'Confirm password',
+  confirmPlaceholder: 'Confirm new password',
+  rulesTitle: 'Password requirements',
+  matchLabel: 'Passwords match',
+  backLabel: 'Back',
+  saveLabel: 'Save',
+  savingLabel: 'Saving...',
+  copyright: '© 2026 ARC Global Risk · Powered by WebAppClouds',
+  emptyPassword: 'Enter a new password.',
+  weakPassword: 'Password does not meet the security requirements.',
+  emptyConfirm: 'Confirm the new password.',
+  mismatch: 'Passwords do not match.',
+  saveErrorTitle: 'Unable to reset password',
+  policy: DEFAULT_PASSWORD_POLICY,
+};
+
+export function mergePasswordPolicy(incoming?: unknown): PasswordPolicy {
+  const raw = asRecord(incoming) ?? {};
+  const flags: Omit<PasswordPolicy, 'rules'> = {
+    minLength: asNumber(raw.minLength, DEFAULT_POLICY_FLAGS.minLength),
+    requireUpper: asBool(raw.requireUpper, DEFAULT_POLICY_FLAGS.requireUpper),
+    requireLower: asBool(raw.requireLower, DEFAULT_POLICY_FLAGS.requireLower),
+    requireNumber: asBool(raw.requireNumber, DEFAULT_POLICY_FLAGS.requireNumber),
+    requireSpecial: asBool(
+      raw.requireSpecial,
+      DEFAULT_POLICY_FLAGS.requireSpecial,
+    ),
+    specialChars: asString(raw.specialChars, DEFAULT_POLICY_FLAGS.specialChars),
+  };
+
+  const incomingRules: PasswordRule[] = [];
+  if (Array.isArray(raw.rules)) {
+    raw.rules.forEach(item => {
+      const rule = asRecord(item);
+      if (
+        !rule ||
+        typeof rule.id !== 'string' ||
+        typeof rule.label !== 'string'
+      ) {
+        return;
+      }
+      incomingRules.push({
+        id: rule.id,
+        label: rule.label,
+        minLength:
+          typeof rule.minLength === 'number' ? rule.minLength : undefined,
+        pattern: typeof rule.pattern === 'string' ? rule.pattern : undefined,
+      });
+    });
+  }
+
   return {
-    length: value.length >= 8,
-    upper: /[A-Z]/.test(value),
-    lower: /[a-z]/.test(value),
-    number: /\d/.test(value),
-    special: /[@$!%*?&#]/.test(value),
+    ...flags,
+    rules: incomingRules.length > 0 ? incomingRules : buildPasswordRules(flags),
   };
 }
 
-export function isStrongPassword(value: string): boolean {
-  const checks = getPasswordChecks(value);
-  return (
-    checks.length &&
-    checks.upper &&
-    checks.lower &&
-    checks.number &&
-    checks.special
-  );
+export function mergeResetPasswordConfig(
+  incoming?: unknown,
+): ResetPasswordConfig {
+  const raw = asRecord(incoming) ?? {};
+  const base = DEFAULT_RESET_PASSWORD_CONFIG;
+
+  return {
+    kicker: asString(raw.kicker, base.kicker),
+    title: asString(raw.title, base.title),
+    subtitle: asString(raw.subtitle, base.subtitle),
+    accountLabel: asString(raw.accountLabel, base.accountLabel),
+    passwordLabel: asString(raw.passwordLabel, base.passwordLabel),
+    passwordPlaceholder: asString(
+      raw.passwordPlaceholder,
+      base.passwordPlaceholder,
+    ),
+    confirmLabel: asString(raw.confirmLabel, base.confirmLabel),
+    confirmPlaceholder: asString(
+      raw.confirmPlaceholder,
+      base.confirmPlaceholder,
+    ),
+    rulesTitle: asString(raw.rulesTitle, base.rulesTitle),
+    matchLabel: asString(raw.matchLabel, base.matchLabel),
+    backLabel: asString(raw.backLabel, base.backLabel),
+    saveLabel: asString(raw.saveLabel, base.saveLabel),
+    savingLabel: asString(raw.savingLabel, base.savingLabel),
+    copyright: asString(raw.copyright, base.copyright),
+    emptyPassword: asString(raw.emptyPassword, base.emptyPassword),
+    weakPassword: asString(raw.weakPassword, base.weakPassword),
+    emptyConfirm: asString(raw.emptyConfirm, base.emptyConfirm),
+    mismatch: asString(raw.mismatch, base.mismatch),
+    saveErrorTitle: asString(raw.saveErrorTitle, base.saveErrorTitle),
+    policy: mergePasswordPolicy(raw.policy ?? incoming),
+  };
+}
+
+export function evaluatePasswordRule(
+  value: string,
+  rule: PasswordRule,
+  policy: PasswordPolicy,
+): boolean {
+  if (typeof rule.minLength === 'number') {
+    return value.length >= rule.minLength;
+  }
+  if (rule.pattern) {
+    try {
+      return new RegExp(rule.pattern).test(value);
+    } catch {
+      return false;
+    }
+  }
+
+  switch (rule.id) {
+    case 'length':
+      return value.length >= policy.minLength;
+    case 'upper':
+      return /[A-Z]/.test(value);
+    case 'lower':
+      return /[a-z]/.test(value);
+    case 'number':
+      return /\d/.test(value);
+    case 'special':
+      return new RegExp(`[${escapeCharClass(policy.specialChars)}]`).test(
+        value,
+      );
+    default:
+      return true;
+  }
+}
+
+export function passwordMeetsPolicy(
+  value: string,
+  policy: PasswordPolicy = DEFAULT_PASSWORD_POLICY,
+): boolean {
+  if (!value) {
+    return false;
+  }
+  return policy.rules.every(rule => evaluatePasswordRule(value, rule, policy));
+}
+
+export function isStrongPassword(
+  value: string,
+  policy: PasswordPolicy = DEFAULT_PASSWORD_POLICY,
+): boolean {
+  return passwordMeetsPolicy(value, policy);
 }
 
 export const IDLE_MINUTE_PRESETS = [15, 30, 60, 120] as const;

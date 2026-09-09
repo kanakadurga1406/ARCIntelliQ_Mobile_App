@@ -68,6 +68,46 @@ export type UserBusinessOption = {
   label: string;
 };
 
+export type PasswordRule = {
+  id: string;
+  label: string;
+  minLength?: number;
+  pattern?: string;
+};
+
+export type PasswordPolicy = {
+  minLength: number;
+  requireUpper: boolean;
+  requireLower: boolean;
+  requireNumber: boolean;
+  requireSpecial: boolean;
+  specialChars: string;
+  rules: PasswordRule[];
+};
+
+export type ResetPasswordConfig = {
+  kicker: string;
+  title: string;
+  subtitle: string;
+  accountLabel: string;
+  passwordLabel: string;
+  passwordPlaceholder: string;
+  confirmLabel: string;
+  confirmPlaceholder: string;
+  rulesTitle: string;
+  matchLabel: string;
+  backLabel: string;
+  saveLabel: string;
+  savingLabel: string;
+  copyright: string;
+  emptyPassword: string;
+  weakPassword: string;
+  emptyConfirm: string;
+  mismatch: string;
+  saveErrorTitle: string;
+  policy: PasswordPolicy;
+};
+
 export type UsersPageConfig = {
   title: string;
   subtitle: string;
@@ -76,6 +116,7 @@ export type UsersPageConfig = {
   userTypes: string[];
   statusChips: StatusChip[];
   sortOptions: SortOption[];
+  resetPassword?: ResetPasswordConfig;
 };
 
 export type UsersPageResult = {

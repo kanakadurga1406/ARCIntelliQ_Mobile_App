@@ -529,6 +529,26 @@ export function EyeMiniIcon({color = colors.textPrimary, size = 16}: IconProps) 
   );
 }
 
+export function EyeOffMiniIcon({
+  color = colors.textPrimary,
+  size = 16,
+}: IconProps) {
+  return (
+    <View style={{width: size, height: size, alignItems: 'center', justifyContent: 'center'}}>
+      <EyeMiniIcon color={color} size={size} />
+      <View
+        style={[
+          styles.eyeSlash,
+          {
+            backgroundColor: color,
+            width: size * 0.92,
+          },
+        ]}
+      />
+    </View>
+  );
+}
+
 export function PencilMiniIcon({
   color = colors.textPrimary,
   size = 16,
@@ -1092,6 +1112,12 @@ const styles = StyleSheet.create({
   },
   eyePupil: {
     borderRadius: 6,
+  },
+  eyeSlash: {
+    position: 'absolute',
+    height: 1.6,
+    borderRadius: 1,
+    transform: [{rotate: '-28deg'}],
   },
   pencil: {
     borderRadius: 1,

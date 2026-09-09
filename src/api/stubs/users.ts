@@ -8,9 +8,10 @@ import type {
 } from '../../types/users';
 import {
   applyUserFilters,
+  DEFAULT_RESET_PASSWORD_CONFIG,
   displayName,
-  isStrongPassword,
   paginateUsers,
+  passwordMeetsPolicy,
 } from '../../utils/userList';
 
 type UserSeed = {
@@ -231,6 +232,7 @@ export function getUsersConfig(): UsersPageConfig {
       {id: 'name-desc', label: 'Name Z-A', field: 'name', direction: 'desc'},
       {id: 'login', label: 'Last login', field: 'lastLoginAt', direction: 'desc'},
     ],
+    resetPassword: DEFAULT_RESET_PASSWORD_CONFIG,
   };
 }
 
@@ -315,16 +317,15 @@ export function stubResetUserPassword(
   if (!current) {
     throw new Error('User not found.');
   }
+  const copy = getUsersConfig().resetPassword ?? DEFAULT_RESET_PASSWORD_CONFIG;
   if (!password.trim()) {
-    throw new Error('Enter a new password.');
+    throw new Error(copy.emptyPassword);
   }
   if (password !== confirmPassword) {
-    throw new Error('Passwords do not match.');
+    throw new Error(copy.mismatch);
   }
-  if (!isStrongPassword(password)) {
-    throw new Error(
-      'Use at least 8 characters with uppercase, lowercase, number, and a special character (@$!%*?&#).',
-    );
+  if (!passwordMeetsPolicy(password, copy.policy)) {
+    throw new Error(copy.weakPassword);
   }
   return current;
 }

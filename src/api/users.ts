@@ -6,7 +6,7 @@ import type {
   UserListQuery,
   UsersPageResult,
 } from '../types/users';
-import {USER_PAGE_SIZE} from '../utils/userList';
+import {USER_PAGE_SIZE, mergeResetPasswordConfig} from '../utils/userList';
 import {USE_STUB_API} from './config';
 import {apiRequest} from './client';
 import {
@@ -119,6 +119,9 @@ function normalizeUsersPage(
           sortOptions: Array.isArray(config.sortOptions)
             ? (config.sortOptions as UsersPageResult['config']['sortOptions'])
             : fallback.config.sortOptions,
+          resetPassword: mergeResetPasswordConfig(
+            config.resetPassword ?? fallback.config.resetPassword,
+          ),
         }
       : fallback.config,
     list: {
