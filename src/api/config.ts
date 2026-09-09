@@ -23,3 +23,7 @@ export const OTP_URL = `${API_BASE_URL}/otp/verify`;
 export const OTP_RESEND_URL = `${API_BASE_URL}/otp/resend`;
 
 export const FORGOT_PASSWORD_URL = `${API_ORIGIN}/forgot-password`;
+
+export const BUSINESS_URL = `${API_BASE_URL}/business`;
+
+export const BUSINESS_ENTER_URL = `${API_BASE_URL}/business/enter`;

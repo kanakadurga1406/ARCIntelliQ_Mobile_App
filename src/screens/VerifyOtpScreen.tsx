@@ -18,6 +18,7 @@ import {
   resendClaimHandlerOtp,
   verifyClaimHandlerOtp,
 } from '../api/auth';
+import {completePostLoginLanding} from '../api/business';
 import {getPendingOtp, setSession} from '../api/session';
 import {AppDialog, useAppDialog} from '../components/claimPortals/AppDialog';
 import {ChevronIcon} from '../components/PortalIcons';
@@ -104,6 +105,23 @@ const VerifyOtpScreen = ({navigation, route}: VerifyOtpScreenProps) => {
         otp: code,
       });
       setSession(session);
+      const next = await completePostLoginLanding(session);
+      if (next.kind === 'enter') {
+        navigation.reset({
+          index: 0,
+          routes: [
+            {
+              name: 'ClaimHistory',
+              params: {
+                user: session.user,
+                portalId: next.businessId,
+                portalName: next.businessName,
+              },
+            },
+          ],
+        });
+        return;
+      }
       navigation.reset({
         index: 0,
         routes: [{name: 'ClaimPortals', params: {user: session.user}}],

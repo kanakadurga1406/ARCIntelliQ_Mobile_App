@@ -1,4 +1,5 @@
 import type {
+  AuthLanding,
   AuthSession,
   ClaimHandlerUser,
   LoginCredentials,
@@ -23,6 +24,7 @@ import {
   readMessage,
   siteRequest,
 } from './client';
+import {clearBusinessCache} from './business';
 import {clearCookies, getCookie} from './cookies';
 import {clearPendingOtp, getPendingOtp, setPendingOtp} from './session';
 
@@ -204,19 +206,70 @@ function toUserRole(value: unknown): ClaimHandlerUser['role'] {
   return 'claim-handler';
 }
 
+function readBoolean(...values: unknown[]): boolean {
+  for (const value of values) {
+    if (typeof value === 'boolean') {
+      return value;
+    }
+    if (value === 1 || value === '1' || value === 'true') {
+      return true;
+    }
+  }
+  return false;
+}
+
+function toAuthLanding(data: unknown): AuthLanding {
+  const root = asRecord(data) || {};
+  const nested = asRecord(root.data) || root;
+  const landing = asRecord(nested.landing) || asRecord(root.landing) || {};
+  const business = asRecord(landing.business);
+
+  return {
+    showClaimPortals: readBoolean(
+      landing.show_claim_portals,
+      landing.showClaimPortals,
+    ),
+    autoEnter: readBoolean(landing.auto_enter, landing.autoEnter),
+    portalCount: Number(landing.portal_count ?? landing.portalCount ?? 0) || 0,
+    businessId: readString(
+      landing.business_id,
+      landing.businessId,
+      business?.id,
+      business?.business_id,
+    ),
+    businessName: readString(
+      landing.business_name,
+      landing.businessName,
+      business?.name,
+      business?.business_name,
+    ),
+  };
+}
+
 function toAuthSession(data: unknown, fallbackEmail: string): AuthSession {
   const root = asRecord(data) || {};
   const nested = asRecord(root.data) || root;
   const userRaw = asRecord(nested.user) || asRecord(root.user) || nested;
   const email = readString(userRaw.email, nested.email, root.email, fallbackEmail);
+  const firstName = readString(userRaw.first_name, userRaw.firstName);
+  const lastName = readString(userRaw.last_name, userRaw.lastName);
   const token = readString(
     nested.token,
     nested.access_token,
     root.token,
     root.access_token,
     getCookie('laravel-session'),
-    'session',
   );
+  const title = userRaw.is_super_admin
+    ? 'Super Admin'
+    : userRaw.is_business_admin
+      ? 'Business Admin'
+      : readString(
+          userRaw.title,
+          userRaw.designation,
+          nested.title,
+          'Claim Handler',
+        );
 
   return {
     token,
@@ -224,16 +277,18 @@ function toAuthSession(data: unknown, fallbackEmail: string): AuthSession {
       id:
         readString(userRaw.id, userRaw.user_id, nested.user_id, root.user_id) ||
         'user',
-      name: readString(userRaw.name, userRaw.full_name, nested.name, email),
+      name: readString(
+        userRaw.name,
+        userRaw.full_name,
+        [firstName, lastName].filter(Boolean).join(' '),
+        nested.name,
+        email,
+      ),
       email,
       role: toUserRole(userRaw.role || nested.role || root.role),
-      title: readString(
-        userRaw.title,
-        userRaw.designation,
-        nested.title,
-        'Claim Handler',
-      ),
+      title,
     },
+    landing: toAuthLanding(data),
   };
 }
 
@@ -242,6 +297,7 @@ export async function startClaimHandlerLogin(
 ): Promise<OtpChallenge> {
   clearCookies();
   clearPendingOtp();
+  clearBusinessCache();
 
   const page = await siteRequest(LOGIN_PAGE_URL);
   const csrf = extractCsrfToken(page.html);
@@ -355,6 +411,8 @@ export async function verifyClaimHandlerOtp(
 
   if (result.json) {
     const session = toAuthSession(result.json, email);
+    console.log('[ARC otp] stored token', session.token ? '(present)' : '(empty)');
+    console.log('[ARC otp] landing', session.landing);
     clearPendingOtp();
     return session;
   }
