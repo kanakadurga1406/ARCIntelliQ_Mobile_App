@@ -17,6 +17,8 @@ import type {
 } from '../../types/claimPortals';
 import type {ProfilePage} from '../../types/profile';
 import type {ClaimPortalTheme} from '../../theme/claimPortals';
+import {FadeSlideIn, PressableScale} from '../ui/Motion';
+import {shadows} from '../../theme/visual';
 import {KpiGrid} from './KpiGrid';
 import {ProfileSettings} from './ProfileSettings';
 
@@ -103,14 +105,15 @@ export function HomeTabBody({
       ) : null}
 
       {actions.map(action => (
-        <Pressable
+        <PressableScale
           key={action.id}
           onPress={() => onAction(action.destination)}
-          style={[styles.button, {backgroundColor: theme.primary}]}>
+          style={[styles.button, {backgroundColor: theme.primary}]}
+          contentStyle={styles.buttonInner}>
           <Text style={[styles.buttonText, {color: theme.onPrimary}]}>
             {action.label}
           </Text>
-        </Pressable>
+        </PressableScale>
       ))}
     </ScrollView>
   );
@@ -153,11 +156,15 @@ export function DashboardTabBody({
       ) : null}
 
       {(dashboard?.sections ?? []).map(section => (
-        <View
+        <FadeSlideIn
           key={section.id}
           style={[
             styles.card,
-            {backgroundColor: theme.card, borderColor: theme.border},
+            {
+              backgroundColor: theme.card,
+              borderColor: theme.border,
+              shadowColor: theme.shadow,
+            },
           ]}>
           <Text style={[styles.cardLabel, {color: theme.textMuted}]}>
             {section.title}
@@ -173,18 +180,19 @@ export function DashboardTabBody({
             </View>
           ))}
           {section.action ? (
-            <Pressable
+            <PressableScale
               onPress={() => onAction(section.action!.destination)}
               style={[
                 styles.button,
                 {backgroundColor: theme.primary, marginTop: 8},
-              ]}>
+              ]}
+              contentStyle={styles.buttonInner}>
               <Text style={[styles.buttonText, {color: theme.onPrimary}]}>
                 {section.action.label}
               </Text>
-            </Pressable>
+            </PressableScale>
           ) : null}
-        </View>
+        </FadeSlideIn>
       ))}
     </ScrollView>
   );
@@ -222,7 +230,7 @@ const styles = StyleSheet.create({
   },
   page: {
     paddingHorizontal: 16,
-    paddingTop: 8,
+    paddingTop: 16,
     paddingBottom: 28,
   },
   title: {
@@ -249,9 +257,15 @@ const styles = StyleSheet.create({
   },
   card: {
     marginTop: 20,
-    borderRadius: 18,
+    borderRadius: 20,
     borderWidth: 1,
     padding: 16,
+    ...shadows.card,
+  },
+  buttonInner: {
+    minHeight: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   cardLabel: {
     fontSize: 11,

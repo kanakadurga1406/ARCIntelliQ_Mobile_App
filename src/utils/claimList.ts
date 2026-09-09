@@ -99,15 +99,33 @@ export function paginateClaims(
   };
 }
 
+export function uniqueById<T extends {id: string}>(items: T[]): T[] {
+  const seen = new Set<string>();
+  const result: T[] = [];
+
+  items.forEach((item, index) => {
+    const base =
+      item.id != null && String(item.id).trim() !== ''
+        ? String(item.id)
+        : `row-${index}`;
+    const id = seen.has(base) ? `${base}-${index}` : base;
+    seen.add(id);
+    result.push(id === item.id ? item : {...item, id});
+  });
+
+  return result;
+}
+
 export function mergeUniqueClaims(
   current: ClaimRecord[],
   incoming: ClaimRecord[],
 ): ClaimRecord[] {
+  const uniqueIncoming = uniqueById(incoming);
   if (current.length === 0) {
-    return incoming;
+    return uniqueIncoming;
   }
 
   const seen = new Set(current.map(item => item.id));
-  const next = incoming.filter(item => !seen.has(item.id));
+  const next = uniqueIncoming.filter(item => !seen.has(item.id));
   return next.length === 0 ? current : [...current, ...next];
 }

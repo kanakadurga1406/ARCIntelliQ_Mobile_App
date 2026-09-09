@@ -17,13 +17,14 @@ import {requestPasswordReset} from '../api/auth';
 import {AppDialog, useAppDialog} from '../components/claimPortals/AppDialog';
 import {EnvelopeIcon, RecoveryShieldIcon} from '../components/FormIcons';
 import {ChevronIcon} from '../components/PortalIcons';
+import {FadeSlideIn} from '../components/ui/Motion';
 import {colors} from '../theme';
 import {getClaimPortalTheme} from '../theme/claimPortals';
 import type {ForgotPasswordScreenProps} from '../types/navigation';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-const ForgotPasswordScreen = ({navigation}: ForgotPasswordScreenProps) => {
+export function ForgotPasswordScreen({navigation}: ForgotPasswordScreenProps) {
   const insets = useSafeAreaInsets();
   const theme = useMemo(() => getClaimPortalTheme('light'), []);
   const {dialog, showDialog, hideDialog} = useAppDialog();
@@ -102,6 +103,7 @@ const ForgotPasswordScreen = ({navigation}: ForgotPasswordScreenProps) => {
             styles.scrollContent,
             {paddingBottom: insets.bottom + 16},
           ]}>
+          <FadeSlideIn distance={12}>
           <Image
             source={require('../../assets/arcintelliq-logo.png')}
             style={styles.logo}
@@ -177,6 +179,7 @@ const ForgotPasswordScreen = ({navigation}: ForgotPasswordScreenProps) => {
               </View>
             </View>
           </View>
+          </FadeSlideIn>
 
           <Text style={styles.footer}>
             Remember your password?{' '}
@@ -197,7 +200,7 @@ const ForgotPasswordScreen = ({navigation}: ForgotPasswordScreenProps) => {
       />
     </View>
   );
-};
+}
 
 export default ForgotPasswordScreen;
 

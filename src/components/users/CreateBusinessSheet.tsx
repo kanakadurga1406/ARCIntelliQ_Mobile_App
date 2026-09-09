@@ -103,11 +103,11 @@ export function CreateBusinessSheet({
           autoCapitalize="none"
         />
         <View style={styles.list}>
-          {matches.map(user => {
+          {matches.map((user, index) => {
             const selectedItem = user.id === userId;
             return (
               <Pressable
-                key={user.id}
+                key={`${user.id}-${index}`}
                 onPress={() => {
                   setUserId(user.id);
                   setError('');

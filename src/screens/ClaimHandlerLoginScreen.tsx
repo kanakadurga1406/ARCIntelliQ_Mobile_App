@@ -14,6 +14,7 @@ import {
   type KeyboardTypeOptions,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import {FadeSlideIn} from '../components/ui/Motion';
 import {ChevronIcon} from '../components/PortalIcons';
 import {
   EnvelopeIcon,
@@ -155,6 +156,7 @@ const ClaimHandlerLoginScreen = ({
               paddingBottom: insets.bottom + 48,
             },
           ]}>
+          <FadeSlideIn distance={12}>
           <View style={styles.brandBlock}>
             <Image
               source={require('../../assets/arcintelliq-logo.png')}
@@ -163,7 +165,9 @@ const ClaimHandlerLoginScreen = ({
             />
             <Text style={styles.tagline}>SMARTER CLAIMS TOGETHER</Text>
           </View>
+          </FadeSlideIn>
 
+          <FadeSlideIn delay={80} distance={14}>
           <View style={styles.card}>
             <Text style={styles.title}>Claim Handler sign in</Text>
             <Text style={styles.subtitle}>
@@ -253,6 +257,7 @@ const ClaimHandlerLoginScreen = ({
               )}
             </Pressable>
           </View>
+          </FadeSlideIn>
 
           <Text style={styles.footer}>
             Need access?{' '}

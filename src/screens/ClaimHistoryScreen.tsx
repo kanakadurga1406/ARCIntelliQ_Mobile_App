@@ -1,4 +1,5 @@
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import {useFocusEffect} from '@react-navigation/native';
 import {
   ActivityIndicator,
   FlatList,
@@ -12,22 +13,24 @@ import {
 import LinearGradient from 'react-native-linear-gradient';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {clearBusinessCache} from '../api/business';
-import {clearSession, getEnteredPortal} from '../api/session';
+import {CLAIM_PAGE_SIZE, fetchClaimHistory} from '../api/claims';
+import {clearSession, getEnteredPortal, setSelectedClaim} from '../api/session';
+import {mergeUniqueClaims} from '../utils/claimList';
+import {AppHeader} from '../components/claimPortals/AppHeader';
+import {PageBackdrop} from '../components/claimPortals/PageBackdrop';
+import {PageHero} from '../components/claimPortals/PageHero';
 import {ClaimCard} from '../components/claims/ClaimCard';
-import {ClaimDetailSheet} from '../components/claims/ClaimDetailSheet';
 import {ClaimFilterSheet} from '../components/claims/ClaimFilterSheet';
 import {IntakeWizard} from '../components/claimPortals/IntakeWizard';
 import {KpiGrid} from '../components/claimPortals/KpiGrid';
 import {PortalListControls} from '../components/claimPortals/PortalListControls';
 import {SideDrawer} from '../components/claimPortals/SideDrawer';
-import {MenuIcon} from '../components/claimPortals/ClaimPortalsIcons';
 import {UiIcon} from '../components/claimPortals/UiIcon';
 import {getClaimPortalTheme} from '../theme/claimPortals';
 import type {
   ClaimPortal,
   NavItem,
   PageAction,
-  PortalAction,
   StatCard,
 } from '../types/claimPortals';
 import type {IntakeConfig, IntakeDraft} from '../types/intake';
@@ -88,9 +91,11 @@ function useDebouncedValue<T>(value: T, delay: number): T {
 const ClaimHistoryScreen = ({navigation, route}: ClaimHistoryScreenProps) => {
   const insets = useSafeAreaInsets();
   const entered = getEnteredPortal();
-  const {user, portalId, portalName} = route.params;
+  const {user, portalId, portalName, openAddClaim} = route.params;
   const businessName = entered?.businessName || portalName;
   const businessId = entered?.businessId || portalId;
+  const featureLabel = entered?.firstFeature?.label || 'Claims';
+  const featureDestination = entered?.firstFeature?.destination || 'claims';
   const theme = useMemo(() => getClaimPortalTheme('light'), []);
 
   const [query, setQuery] = useState('');
@@ -100,7 +105,7 @@ const ClaimHistoryScreen = ({navigation, route}: ClaimHistoryScreenProps) => {
   const [listTotal, setListTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
-  const [isListLoading, setIsListLoading] = useState(false);
+  const [isListLoading, setIsListLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [listError, setListError] = useState('');
@@ -110,7 +115,6 @@ const ClaimHistoryScreen = ({navigation, route}: ClaimHistoryScreenProps) => {
   const [menuItems, setMenuItems] = useState<NavItem[]>(entered?.menu ?? []);
   const [portals, setPortals] = useState<ClaimPortal[]>([]);
   const [intakeConfig, setIntakeConfig] = useState<IntakeConfig | null>(null);
-  const [selectedClaim, setSelectedClaim] = useState<ClaimRecord | null>(null);
   const [toast, setToast] = useState('');
 
   const debouncedQuery = useDebouncedValue(query, 320);
@@ -124,15 +128,86 @@ const ClaimHistoryScreen = ({navigation, route}: ClaimHistoryScreenProps) => {
     setTimeout(() => setToast(''), 2200);
   }, []);
 
-  const loadPage = useCallback(async () => {
-    setIsListLoading(false);
-    setHasMore(false);
-    setListError('');
-  }, []);
+  const loadPage = useCallback(
+    async (nextPage: number, mode: 'replace' | 'append') => {
+      if (mode === 'append') {
+        if (loadingMoreRef.current || !hasMoreRef.current) {
+          return;
+        }
+        loadingMoreRef.current = true;
+        setIsLoadingMore(true);
+      } else {
+        requestSeqRef.current += 1;
+        hasMoreRef.current = true;
+        if (claimsRef.current.length === 0) {
+          setIsListLoading(true);
+        }
+      }
+
+      const requestId = requestSeqRef.current;
+      setListError('');
+
+      try {
+        const result = await fetchClaimHistory({
+          portalId: businessId,
+          portalName: businessName,
+          page: nextPage,
+          limit: CLAIM_PAGE_SIZE,
+          search: debouncedQuery,
+          filters,
+        });
+
+        if (requestId !== requestSeqRef.current) {
+          return;
+        }
+
+        setConfig(result.config);
+        hasMoreRef.current = result.list.hasMore;
+        setHasMore(result.list.hasMore);
+        setPage(result.list.page);
+        setListTotal(result.list.total);
+        setClaims(current => {
+          const items = result.list.items ?? [];
+          const next =
+            mode === 'replace' ? items : mergeUniqueClaims(current, items);
+          claimsRef.current = next;
+          return next;
+        });
+      } catch (error) {
+        if (requestId !== requestSeqRef.current) {
+          return;
+        }
+        const message =
+          error instanceof Error ? error.message : `Unable to load ${featureLabel}.`;
+        if (mode === 'replace' && claimsRef.current.length === 0) {
+          setListError(message);
+        } else {
+          showToast(message);
+        }
+      } finally {
+        if (mode === 'append') {
+          loadingMoreRef.current = false;
+          setIsLoadingMore(false);
+        } else if (requestId === requestSeqRef.current) {
+          setIsListLoading(false);
+        }
+      }
+    },
+    [businessId, businessName, debouncedQuery, featureLabel, filters, showToast],
+  );
 
   useEffect(() => {
-    loadPage();
+    loadPage(1, 'replace');
   }, [loadPage]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (openAddClaim) {
+        setAddClaimOpen(true);
+        navigation.setParams({openAddClaim: undefined});
+      }
+    }, [navigation, openAddClaim]),
+  );
 
   useEffect(() => {
     const portal = getEnteredPortal();
@@ -175,7 +250,6 @@ const ClaimHistoryScreen = ({navigation, route}: ClaimHistoryScreenProps) => {
       if (
         destination === 'home' ||
         destination === 'portals' ||
-        destination === 'dashboard' ||
         destination === 'profile'
       ) {
         navigation.navigate('ClaimPortals', {
@@ -192,7 +266,7 @@ const ClaimHistoryScreen = ({navigation, route}: ClaimHistoryScreenProps) => {
   const refresh = useCallback(async () => {
     setIsRefreshing(true);
     try {
-      await loadPage();
+      await loadPage(1, 'replace');
     } finally {
       setIsRefreshing(false);
     }
@@ -255,19 +329,13 @@ const ClaimHistoryScreen = ({navigation, route}: ClaimHistoryScreenProps) => {
     ];
   }, [businessId, portalId, portalName, portals]);
 
-  const handleClaimAction = (action: PortalAction) => {
-    const claim = selectedClaim;
-    setSelectedClaim(null);
-    if (!claim) {
-      return;
-    }
-    if (action.destination === 'view') {
-      return;
-    }
-    showToast(
-      `${action.label} for ${claim.incidentNumber} will connect to the live API.`,
-    );
-  };
+  const openClaim = useCallback(
+    (item: ClaimRecord) => {
+      setSelectedClaim(item);
+      navigation.navigate('ClaimDetail', {claimId: item.id});
+    },
+    [navigation],
+  );
 
   const renderBody = () => {
     if (isListLoading && claims.length === 0) {
@@ -275,7 +343,7 @@ const ClaimHistoryScreen = ({navigation, route}: ClaimHistoryScreenProps) => {
         <View style={styles.centered}>
           <ActivityIndicator color={theme.primary} />
           <Text style={[styles.helper, {color: theme.textSecondary}]}>
-            Loading claim history...
+            Loading {featureLabel}...
           </Text>
         </View>
       );
@@ -286,7 +354,7 @@ const ClaimHistoryScreen = ({navigation, route}: ClaimHistoryScreenProps) => {
         <View style={styles.centered}>
           <Text style={[styles.helper, {color: theme.danger}]}>{listError}</Text>
           <Pressable
-            onPress={() => loadPage()}
+            onPress={() => loadPage(1, 'replace')}
             style={[styles.retry, {backgroundColor: theme.primary}]}>
             <Text style={[styles.retryText, {color: theme.onPrimary}]}>
               Try again
@@ -299,16 +367,23 @@ const ClaimHistoryScreen = ({navigation, route}: ClaimHistoryScreenProps) => {
     return (
       <FlatList
         data={claims}
-        keyExtractor={item => item.id}
+        keyExtractor={(item, index) => `${item.id}-${index}`}
         renderItem={({item}) => (
           <ClaimCard
             theme={theme}
             claim={item}
-            onPress={() => setSelectedClaim(item)}
+            onPress={() => openClaim(item)}
           />
         )}
         ListHeaderComponent={
           <View style={styles.headerBlock}>
+            <PageHero
+              icon="briefcase"
+              title={featureLabel}
+              subtitle={`${businessName}${
+                businessId ? ` · Business ID ${businessId}` : ''
+              }`}
+            />
             {config?.statCards?.length ? (
               <View style={styles.kpiWrap}>
                 <KpiGrid
@@ -365,7 +440,7 @@ const ClaimHistoryScreen = ({navigation, route}: ClaimHistoryScreenProps) => {
         }
         ListEmptyComponent={
           <Text style={[styles.empty, {color: theme.textSecondary}]}>
-            {businessName} is open. Claims will show here when that API is connected.
+            No {featureLabel.toLowerCase()} returned by {entered?.firstFeature?.route || '/claims'}.
           </Text>
         }
         ListFooterComponent={
@@ -389,7 +464,7 @@ const ClaimHistoryScreen = ({navigation, route}: ClaimHistoryScreenProps) => {
         showsVerticalScrollIndicator={false}
         onEndReached={() => {
           if (!isListLoading && !isRefreshing) {
-            loadPage();
+            loadPage(page + 1, 'append');
           }
         }}
         onEndReachedThreshold={0.35}
@@ -405,34 +480,19 @@ const ClaimHistoryScreen = ({navigation, route}: ClaimHistoryScreenProps) => {
   };
 
   return (
-    <View style={[styles.root, {backgroundColor: theme.page}]}>
+    <View style={styles.root}>
+      <PageBackdrop />
       <StatusBar barStyle="dark-content" />
-      <View style={{height: insets.top, backgroundColor: theme.page}} />
-      <View style={styles.header}>
-        <Pressable
-          onPress={() => setDrawerOpen(true)}
-          accessibilityRole="button"
-          accessibilityLabel="Open menu"
-          hitSlop={8}
-          style={({pressed}) => [
-            styles.iconButton,
-            {backgroundColor: theme.card, borderColor: theme.border},
-            pressed && {opacity: 0.8},
-          ]}>
-          <MenuIcon color={theme.text} />
-        </Pressable>
-        <View style={styles.headerCopy}>
-          <Text style={[styles.headerTitle, {color: theme.text}]} numberOfLines={1}>
-            {businessName}
-          </Text>
-          <Text
-            style={[styles.headerSubtitle, {color: theme.textSecondary}]}
-            numberOfLines={1}>
-            {businessId ? `Business ID ${businessId}` : 'Entered business'}
-          </Text>
-        </View>
-        <View style={styles.headerSpacer} />
-      </View>
+      <AppHeader
+        theme={theme}
+        userName={user.name}
+        topInset={insets.top}
+        onMenuPress={() => setDrawerOpen(true)}
+        onFaqsPress={() => navigation.navigate('Faqs')}
+        onProfilePress={() =>
+          navigation.navigate('ClaimPortals', {user, initialTab: 'profile'})
+        }
+      />
 
       {renderBody()}
 
@@ -482,7 +542,7 @@ const ClaimHistoryScreen = ({navigation, route}: ClaimHistoryScreenProps) => {
         user={user}
         portalName={businessName}
         menuItems={menuItems}
-        activeDestination="portals"
+        activeDestination={featureDestination}
         topInset={insets.top}
         bottomInset={insets.bottom}
         onClose={() => setDrawerOpen(false)}
@@ -501,15 +561,6 @@ const ClaimHistoryScreen = ({navigation, route}: ClaimHistoryScreenProps) => {
           setFilters(next);
           setFilterOpen(false);
         }}
-      />
-
-      <ClaimDetailSheet
-        visible={Boolean(selectedClaim)}
-        theme={theme}
-        claim={selectedClaim}
-        actions={config?.claimActions ?? []}
-        onClose={() => setSelectedClaim(null)}
-        onAction={handleClaimAction}
       />
 
       {intakeConfig ? (
@@ -533,39 +584,19 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
   },
-  header: {
-    paddingHorizontal: 16,
-    paddingBottom: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  iconButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerCopy: {
-    flex: 1,
-    minWidth: 0,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-  },
-  headerSubtitle: {
-    marginTop: 2,
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  headerSpacer: {
-    width: 38,
-  },
   headerBlock: {
+    paddingTop: 16,
     paddingBottom: 4,
+  },
+  pageTitle: {
+    fontSize: 20,
+    lineHeight: 24,
+    fontWeight: '700',
+  },
+  pageSubtitle: {
+    marginTop: 2,
+    marginBottom: 12,
+    fontSize: 13,
   },
   kpiWrap: {
     marginBottom: 14,

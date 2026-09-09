@@ -15,6 +15,7 @@ export type NavItem = {
   label: string;
   icon: string;
   destination: string;
+  route?: string;
   badge?: number;
   style?: 'default' | 'fab';
 };

@@ -19,7 +19,8 @@ import {
   verifyClaimHandlerOtp,
 } from '../api/auth';
 import {completePostLoginLanding} from '../api/business';
-import {getPendingOtp, setSession} from '../api/session';
+import {getEnteredPortal, getPendingOtp, setSession} from '../api/session';
+import {openEnteredWorkspace} from '../utils/enteredPortalNav';
 import {AppDialog, useAppDialog} from '../components/claimPortals/AppDialog';
 import {ChevronIcon} from '../components/PortalIcons';
 import {colors} from '../theme';
@@ -107,6 +108,11 @@ const VerifyOtpScreen = ({navigation, route}: VerifyOtpScreenProps) => {
       setSession(session);
       const next = await completePostLoginLanding(session);
       if (next.kind === 'enter') {
+        const entered = getEnteredPortal();
+        if (entered) {
+          openEnteredWorkspace(navigation, session.user, entered, 'reset');
+          return;
+        }
         navigation.reset({
           index: 0,
           routes: [
@@ -427,7 +433,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     letterSpacing: 1.6,
     fontWeight: '700',
-    color: colors.textMuted,
+    color: '#9AA6B5',
   },
   title: {
     marginTop: 6,
@@ -442,7 +448,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 21,
     textAlign: 'center',
-    color: colors.textSecondary,
+    color: '#7C8896',
     paddingHorizontal: 12,
   },
   otpWrap: {
@@ -458,17 +464,17 @@ const styles = StyleSheet.create({
     height: 56,
     borderRadius: 14,
     borderWidth: 1.5,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
+    borderColor: '#E8EEF5',
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
   },
   otpBoxFocused: {
     borderColor: colors.primary,
-    backgroundColor: colors.surfaceMuted,
+    backgroundColor: '#F8FBFF',
   },
   otpBoxFilled: {
-    borderColor: colors.accentSofter,
+    borderColor: '#D7E8FF',
   },
   otpMask: {
     fontSize: 22,

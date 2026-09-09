@@ -1,7 +1,7 @@
 export const colors = {
   background: '#FFFFFF',
   surface: '#FFFFFF',
-  surfaceMuted: '#F8FBFF',
+  surfaceMuted: '#F5F9FF',
 
   navy: '#10233F',
   primary: '#2B74FF',
@@ -11,8 +11,8 @@ export const colors = {
   primarySoft: '#6AA8FF',
   primaryDeep: '#1E5EFF',
 
-  accentSoft: '#E8F2FF',
-  accentSofter: '#D7E8FF',
+  accentSoft: '#EAF4FF',
+  accentSofter: '#D9EBFF',
   wave: '#E7F2FF',
   waveSoft: '#F3F8FF',
   waveBottom: '#E8F3FF',
@@ -20,15 +20,15 @@ export const colors = {
   dot: '#C9DDF8',
 
   textPrimary: '#10233F',
-  textSecondary: '#7C8896',
-  textMuted: '#9AA6B5',
+  textSecondary: '#6E7B8C',
+  textMuted: '#8E9AAB',
 
-  border: '#E8EEF5',
+  border: '#E3EDF7',
   shadow: '#1B3A66',
   transparent: 'transparent',
 
-  page: '#F2F5F8',
-  inputFill: '#F4F7FB',
+  page: '#EEF5FF',
+  inputFill: '#F4F8FF',
   danger: '#E11D48',
   success: '#22A55B',
   onPrimary: '#FFFFFF',

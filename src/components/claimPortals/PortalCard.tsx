@@ -2,6 +2,8 @@ import React from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
 import type {ClaimPortal} from '../../types/claimPortals';
 import type {ClaimPortalTheme} from '../../theme/claimPortals';
+import {shadows} from '../../theme/visual';
+import {FadeSlideIn, PressableScale} from '../ui/Motion';
 import {
   ChevronRightIcon,
   CrownIcon,
@@ -47,18 +49,18 @@ export function PortalCard({theme, portal, onPress}: PortalCardProps) {
         ];
 
   return (
-    <Pressable
+    <FadeSlideIn>
+    <PressableScale
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={`${portal.name}, ${portal.status}`}
-      style={({pressed}) => [
+      contentStyle={[
         styles.card,
         {
           backgroundColor: theme.card,
           borderColor: theme.border,
           shadowColor: theme.shadow,
         },
-        pressed && {opacity: 0.96},
       ]}>
       <View style={styles.topRow}>
         <View style={[styles.avatar, {backgroundColor: AVATAR_BG}]}>
@@ -131,7 +133,7 @@ export function PortalCard({theme, portal, onPress}: PortalCardProps) {
 
       <View style={[styles.footer, {borderTopColor: DIVIDER}]}>
         {metrics.slice(0, 3).map((metric, index) => (
-          <View key={metric.id} style={styles.metricCell}>
+          <View key={`${metric.id}-${index}`} style={styles.metricCell}>
             {index > 0 ? (
               <View style={[styles.metricDivider, {backgroundColor: DIVIDER}]} />
             ) : null}
@@ -144,22 +146,20 @@ export function PortalCard({theme, portal, onPress}: PortalCardProps) {
           </View>
         ))}
       </View>
-    </Pressable>
+    </PressableScale>
+    </FadeSlideIn>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 18,
+    borderRadius: 20,
     borderWidth: 1,
     paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 0,
     marginBottom: 12,
-    shadowOffset: {width: 0, height: 6},
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 2,
+    ...shadows.card,
     overflow: 'hidden',
   },
   topRow: {

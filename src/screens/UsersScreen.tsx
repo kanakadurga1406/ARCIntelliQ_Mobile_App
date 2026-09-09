@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {fetchClaimPortalsDashboard} from '../api/claimPortals';
+import {fetchClaimPortalsDashboard} from '../api/business';
 import {clearSession} from '../api/session';
 import {
   createBusinessFromExisting,
@@ -22,6 +22,8 @@ import {
 } from '../api/users';
 import {AppDialog, useAppDialog} from '../components/claimPortals/AppDialog';
 import {AppHeader} from '../components/claimPortals/AppHeader';
+import {PageBackdrop} from '../components/claimPortals/PageBackdrop';
+import {PageHero} from '../components/claimPortals/PageHero';
 import {PortalListControls} from '../components/claimPortals/PortalListControls';
 import {SideDrawer} from '../components/claimPortals/SideDrawer';
 import {UiIcon} from '../components/claimPortals/UiIcon';
@@ -463,7 +465,7 @@ const UsersScreen = ({navigation, route}: UsersScreenProps) => {
     return (
       <FlatList
         data={users}
-        keyExtractor={item => item.id}
+        keyExtractor={(item, index) => `${item.id}-${index}`}
         renderItem={({item}) => (
           <UserCard
             theme={theme}
@@ -474,12 +476,13 @@ const UsersScreen = ({navigation, route}: UsersScreenProps) => {
         )}
         ListHeaderComponent={
           <View style={styles.headerBlock}>
-            <Text style={[styles.pageTitle, {color: theme.text}]}>
-              {config?.title || 'Users'}
-            </Text>
-            <Text style={[styles.pageSubtitle, {color: theme.textSecondary}]}>
-              {config?.subtitle || 'Manage users, roles, and portal access.'}
-            </Text>
+            <PageHero
+              icon="users"
+              title={config?.title || 'Users'}
+              subtitle={
+                config?.subtitle || 'Manage users, roles, and portal access.'
+              }
+            />
             <Pressable
               onPress={async () => {
                 setCreateBusinessOpen(true);
@@ -587,12 +590,13 @@ const UsersScreen = ({navigation, route}: UsersScreenProps) => {
   };
 
   return (
-    <View style={[styles.root, {backgroundColor: theme.page}]}>
+    <View style={styles.root}>
+      <PageBackdrop />
       <StatusBar barStyle="dark-content" />
-      <View style={{height: insets.top, backgroundColor: theme.page}} />
       <AppHeader
         theme={theme}
         userName={user.name}
+        topInset={insets.top}
         onMenuPress={() => setDrawerOpen(true)}
         onFaqsPress={() => navigation.navigate('Faqs')}
         onProfilePress={() =>
@@ -747,6 +751,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   headerBlock: {
+    paddingTop: 16,
     paddingBottom: 4,
   },
   pageTitle: {

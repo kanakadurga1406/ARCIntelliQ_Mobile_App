@@ -3,7 +3,9 @@ import {Pressable, StyleSheet, Text, View} from 'react-native';
 import type {AppUser} from '../../types/users';
 import type {ClaimPortalTheme} from '../../theme/claimPortals';
 import {getAvatarColor, getInitials} from '../../theme/claimPortals';
+import {shadows} from '../../theme/visual';
 import {DotsIcon} from '../claimPortals/ClaimPortalsIcons';
+import {FadeSlideIn, PressableScale} from '../ui/Motion';
 import {formatUserDate} from '../../utils/userList';
 
 type UserCardProps = {
@@ -24,23 +26,28 @@ export function UserCard({theme, user, onPress, onMenuPress}: UserCardProps) {
   const portal = portalColors(theme);
 
   return (
-    <Pressable
+    <FadeSlideIn>
+    <PressableScale
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={`${user.name}, ${user.status}`}
-      style={({pressed}) => [
+      contentStyle={[
         styles.card,
         {
           backgroundColor: theme.card,
-          borderColor: theme.border,
           shadowColor: theme.shadow,
         },
-        pressed && {opacity: 0.94},
       ]}>
       <View style={styles.topRow}>
         <View
-          style={[styles.avatar, {backgroundColor: getAvatarColor(user.name)}]}>
-          <Text style={styles.avatarText}>{getInitials(user.name)}</Text>
+          style={[
+            styles.avatar,
+            {backgroundColor: `${getAvatarColor(user.name)}22`},
+          ]}>
+          <Text
+            style={[styles.avatarText, {color: getAvatarColor(user.name)}]}>
+            {getInitials(user.name)}
+          </Text>
         </View>
         <View style={styles.titleBlock}>
           <Text style={[styles.name, {color: theme.text}]} numberOfLines={1}>
@@ -108,20 +115,17 @@ export function UserCard({theme, user, onPress, onMenuPress}: UserCardProps) {
           </Text>
         </View>
       </View>
-    </Pressable>
+    </PressableScale>
+    </FadeSlideIn>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 18,
-    borderWidth: 1,
-    padding: 14,
-    marginBottom: 12,
-    shadowOffset: {width: 0, height: 6},
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 2,
+    borderRadius: 24,
+    padding: 16,
+    marginBottom: 14,
+    ...shadows.card,
   },
   topRow: {
     flexDirection: 'row',
@@ -135,8 +139,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   avatarText: {
-    color: '#FFFFFF',
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '800',
   },
   titleBlock: {

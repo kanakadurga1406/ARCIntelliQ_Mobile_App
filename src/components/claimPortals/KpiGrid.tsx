@@ -1,7 +1,9 @@
 import React from 'react';
-import {Pressable, StyleSheet, Text, View} from 'react-native';
+import {StyleSheet, Text, View} from 'react-native';
 import type {StatCard} from '../../types/claimPortals';
 import type {ClaimPortalTheme} from '../../theme/claimPortals';
+import {shadows} from '../../theme/visual';
+import {FadeSlideIn, PressableScale} from '../ui/Motion';
 import {getToneColors, UiIcon} from './UiIcon';
 
 type KpiGridProps = {
@@ -82,17 +84,24 @@ function KpiCard({
 
   if (onPress) {
     return (
-      <Pressable
-        onPress={onPress}
-        accessibilityRole="button"
-        accessibilityLabel={card.title}
-        style={({pressed}) => [...cardStyle, pressed && {opacity: 0.92}]}>
-        {content}
-      </Pressable>
+      <FadeSlideIn style={styles.flex}>
+        <PressableScale
+          onPress={onPress}
+          accessibilityRole="button"
+          accessibilityLabel={card.title}
+          style={styles.flex}
+          contentStyle={cardStyle}>
+          {content}
+        </PressableScale>
+      </FadeSlideIn>
     );
   }
 
-  return <View style={cardStyle}>{content}</View>;
+  return (
+    <FadeSlideIn style={styles.flex}>
+      <View style={cardStyle}>{content}</View>
+    </FadeSlideIn>
+  );
 }
 
 function TrendText({
@@ -118,15 +127,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
   },
+  flex: {
+    flex: 1,
+  },
   card: {
     flex: 1,
-    borderRadius: 16,
+    borderRadius: 18,
     borderWidth: 1,
-    padding: 12,
-    shadowOffset: {width: 0, height: 6},
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    elevation: 2,
+    padding: 14,
+    ...shadows.card,
   },
   spacer: {
     flex: 1,

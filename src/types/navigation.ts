@@ -19,11 +19,15 @@ export type RootStackParamList = {
     user: ClaimHandlerUser;
     portalId: string;
     portalName: string;
+    openAddClaim?: boolean;
   };
   Users: {
     user: ClaimHandlerUser;
     portalId?: string;
     portalName?: string;
+  };
+  ClaimDetail: {
+    claimId: string;
   };
 };
 
@@ -80,4 +84,9 @@ export type ClaimHistoryScreenProps = NativeStackScreenProps<
 export type UsersScreenProps = NativeStackScreenProps<
   RootStackParamList,
   'Users'
+>;
+
+export type ClaimDetailScreenProps = NativeStackScreenProps<
+  RootStackParamList,
+  'ClaimDetail'
 >;

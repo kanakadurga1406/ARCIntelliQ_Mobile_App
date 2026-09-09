@@ -1,13 +1,10 @@
 /**
- * Live backend. Screens call src/api/*; those modules hit these URLs
- * when USE_STUB_API is false.
+ * Live backend. Screens call src/api/*; those modules hit these URLs.
  *
  * Claim Handler sign-in is the Laravel web form:
  * GET  /admin  → CSRF + session cookies
  * POST /login  → email, password, portal=unified, _token
  */
-export const USE_STUB_API = false;
-
 export const API_ORIGIN = 'https://arcintelliq.arcclaimsportal.com';
 
 export const API_BASE_URL = `${API_ORIGIN}/mobile`;

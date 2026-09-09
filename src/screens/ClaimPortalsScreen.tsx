@@ -19,9 +19,12 @@ import {
   PORTAL_PAGE_SIZE,
   profileFromUser,
 } from '../api/business';
-import {clearSession, getSession} from '../api/session';
+import {clearSession} from '../api/session';
+import {openEnteredWorkspace} from '../utils/enteredPortalNav';
 import {AppDialog, useAppDialog} from '../components/claimPortals/AppDialog';
 import {AppHeader} from '../components/claimPortals/AppHeader';
+import {PageBackdrop} from '../components/claimPortals/PageBackdrop';
+import {PageHero} from '../components/claimPortals/PageHero';
 import {
   FilterSheet,
   PortalActionsSheet,
@@ -33,6 +36,7 @@ import {
   DashboardTabBody,
   ProfileTabBody,
 } from '../components/claimPortals/TabPlaceholders';
+import {FadeSlideIn} from '../components/ui/Motion';
 import {getClaimPortalTheme} from '../theme/claimPortals';
 import type {
   ClaimPortal,
@@ -153,6 +157,7 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
   const [errorMessage, setErrorMessage] = useState('');
   const [listError, setListError] = useState('');
   const [toast, setToast] = useState('');
+  const [enteringName, setEnteringName] = useState('');
 
   const theme = useMemo(() => getClaimPortalTheme('light'), []);
   const {dialog, showDialog, hideDialog} = useAppDialog();
@@ -161,6 +166,7 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
   const loadingMoreRef = useRef(false);
   const hasMoreRef = useRef(true);
   const portalsRef = useRef<ClaimPortal[]>([]);
+  const enteringRef = useRef(false);
 
   const showToast = useCallback((message: string) => {
     setToast(message);
@@ -340,25 +346,39 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
 
   const openClaimHistory = useCallback(
     async (portal: ClaimPortal) => {
-      try {
-        const entered = await enterBusiness(
-          portal.businessId || portal.id,
-          getSession()?.token,
-        );
-        navigation.navigate('ClaimHistory', {
-          user,
-          portalId: entered.businessId || portal.businessId || portal.id,
-          portalName: entered.businessName || portal.name,
+      const businessId = String(portal.businessId || portal.id || '').trim();
+      if (!businessId) {
+        showDialog({
+          title: 'Unable to enter',
+          message: 'This business has no ID from the API.',
+          buttons: [{label: 'OK'}],
         });
+        return;
+      }
+      if (enteringRef.current) {
+        return;
+      }
+
+      enteringRef.current = true;
+      setEnteringName(portal.name);
+      try {
+        const entered = await enterBusiness(businessId);
+        openEnteredWorkspace(navigation, user, entered);
       } catch (error) {
-        showToast(
-          error instanceof Error
-            ? error.message
-            : 'Unable to enter this business.',
-        );
+        showDialog({
+          title: 'Unable to enter',
+          message:
+            error instanceof Error
+              ? error.message
+              : 'Unable to enter this business.',
+          buttons: [{label: 'OK'}],
+        });
+      } finally {
+        enteringRef.current = false;
+        setEnteringName('');
       }
     },
-    [navigation, showToast, user],
+    [navigation, showDialog, user],
   );
 
   const handleDestination = useCallback(
@@ -462,7 +482,7 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
     return (
       <FlatList
         data={visiblePortals}
-        keyExtractor={item => item.id}
+        keyExtractor={(item, index) => `${item.id}-${index}`}
         renderItem={({item}) => (
           <PortalCard
             theme={theme}
@@ -473,13 +493,14 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
         )}
         ListHeaderComponent={
           <View style={styles.headerBlock}>
-            <Text style={[styles.pageTitle, {color: theme.text}]}>
-              {dashboard?.portalsPage?.title || 'Claim Portals'}
-            </Text>
-            <Text style={[styles.pageSubtitle, {color: theme.textSecondary}]}>
-              {dashboard?.portalsPage?.subtitle ||
-                'Manage and monitor all business portals'}
-            </Text>
+            <PageHero
+              icon="building"
+              title={dashboard?.portalsPage?.title || 'Claim Portals'}
+              subtitle={
+                dashboard?.portalsPage?.subtitle ||
+                'Manage and monitor all business portals'
+              }
+            />
             {dashboard ? (
               <PortalListControls
                 theme={theme}
@@ -551,20 +572,26 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
   };
 
   return (
-    <View style={[styles.root, {backgroundColor: theme.page}]}>
+    <View style={styles.root}>
+      <PageBackdrop />
       <StatusBar barStyle="dark-content" />
-      <View style={{height: insets.top, backgroundColor: theme.page}} />
       <AppHeader
         theme={theme}
         userName={user.name}
+        topInset={insets.top}
         onMenuPress={() => setDrawerOpen(true)}
         onFaqsPress={() => navigation.navigate('Faqs')}
         onProfilePress={() => setActiveTab('profile')}
       />
 
       <View style={styles.body}>
-        {activeTab === 'portals' ? renderPortals() : null}
+        {activeTab === 'portals' ? (
+          <FadeSlideIn key="portals" distance={8} style={styles.body}>
+            {renderPortals()}
+          </FadeSlideIn>
+        ) : null}
         {activeTab === 'dashboard' ? (
+          <FadeSlideIn key="dashboard" distance={8} style={styles.body}>
           <DashboardTabBody
             theme={theme}
             dashboard={dashboard?.dashboard ?? null}
@@ -572,8 +599,10 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
             onRefresh={() => loadDashboard(true)}
             onAction={handleDestination}
           />
+          </FadeSlideIn>
         ) : null}
         {activeTab === 'profile' ? (
+          <FadeSlideIn key="profile" distance={8} style={styles.body}>
           <ProfileTabBody
             theme={theme}
             user={user}
@@ -581,6 +610,7 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
             extraFields={[]}
             onSignOut={requestSignOut}
           />
+          </FadeSlideIn>
         ) : null}
         {activeTab !== 'portals' &&
         activeTab !== 'dashboard' &&
@@ -643,6 +673,15 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
         onAction={handlePortalAction}
       />
 
+      {enteringName ? (
+        <View style={styles.enteringOverlay} pointerEvents="auto">
+          <ActivityIndicator color={theme.primary} size="large" />
+          <Text style={[styles.enteringText, {color: theme.text}]}>
+            Entering {enteringName}...
+          </Text>
+        </View>
+      ) : null}
+
       <AppDialog
         visible={dialog.visible}
         theme={theme}
@@ -665,6 +704,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   headerBlock: {
+    paddingTop: 16,
     paddingBottom: 4,
   },
   pageTitle: {
@@ -746,6 +786,24 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 13,
     fontWeight: '600',
+  },
+  enteringOverlay: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.72)',
+    zIndex: 40,
+    gap: 12,
+    paddingHorizontal: 24,
+  },
+  enteringText: {
+    fontSize: 15,
+    fontWeight: '700',
+    textAlign: 'center',
   },
 });
 

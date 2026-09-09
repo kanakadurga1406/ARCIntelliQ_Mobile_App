@@ -1,7 +1,6 @@
 import React from 'react';
 import {
   Image,
-  Pressable,
   StatusBar,
   StyleSheet,
   Text,
@@ -14,6 +13,7 @@ import {
   HardHatIcon,
   PersonIcon,
 } from '../components/PortalIcons';
+import {FadeSlideIn, PressableScale} from '../components/ui/Motion';
 import {colors} from '../theme';
 import type {UserRole} from '../types/auth';
 import type {PortalSelectScreenProps} from '../types/navigation';
@@ -67,27 +67,29 @@ type PortalOptionProps = {
 
 function PortalOption({title, subtitle, Icon, onPress}: PortalOptionProps) {
   return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={title}
-      android_ripple={{color: colors.accentSoft}}
-      style={({pressed}) => [styles.card, pressed && styles.cardPressed]}>
-      <View style={styles.iconBadge}>
-        <Icon />
-      </View>
-      <View style={styles.cardCopy}>
-        <Text style={styles.cardTitle} numberOfLines={1}>
-          {title}
-        </Text>
-        <Text style={styles.cardSubtitle} numberOfLines={2}>
-          {subtitle}
-        </Text>
-      </View>
-      <View style={styles.arrowButton}>
-        <ChevronIcon />
-      </View>
-    </Pressable>
+    <FadeSlideIn>
+      <PressableScale
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={title}
+        android_ripple={{color: colors.accentSoft}}
+        contentStyle={styles.card}>
+        <View style={styles.iconBadge}>
+          <Icon />
+        </View>
+        <View style={styles.cardCopy}>
+          <Text style={styles.cardTitle} numberOfLines={1}>
+            {title}
+          </Text>
+          <Text style={styles.cardSubtitle} numberOfLines={2}>
+            {subtitle}
+          </Text>
+        </View>
+        <View style={styles.arrowButton}>
+          <ChevronIcon />
+        </View>
+      </PressableScale>
+    </FadeSlideIn>
   );
 }
 
@@ -246,20 +248,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.surface,
-    borderRadius: 18,
+    borderRadius: 20,
     paddingVertical: 16,
     paddingLeft: 14,
     paddingRight: 12,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: colors.border,
     shadowColor: colors.shadow,
     shadowOffset: {width: 0, height: 6},
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.07,
     shadowRadius: 14,
-    elevation: 3,
-  },
-  cardPressed: {
-    backgroundColor: colors.surfaceMuted,
+    elevation: 2,
   },
   iconBadge: {
     width: 46,
