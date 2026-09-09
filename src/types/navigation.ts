@@ -22,6 +22,8 @@ export type RootStackParamList = {
   };
   Users: {
     user: ClaimHandlerUser;
+    portalId?: string;
+    portalName?: string;
   };
 };
 

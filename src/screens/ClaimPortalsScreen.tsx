@@ -397,10 +397,6 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
         navigation.navigate('SmartSearch');
         return;
       }
-      if (destination === 'users') {
-        navigation.navigate('Users', {user});
-        return;
-      }
       showToast('This option will connect when the live API is ready.');
     },
     [
@@ -410,7 +406,6 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
       showToast,
       signOut,
       tabDestinations,
-      user,
     ],
   );
 

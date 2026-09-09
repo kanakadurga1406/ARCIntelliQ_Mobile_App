@@ -29,7 +29,7 @@ export const FAQS: FaqItem[] = [
     id: 'users',
     question: 'Where do I manage users?',
     answer:
-      'Open the side menu from Claim Portals and choose Users. This is a workspace-level screen for roles and portal access, so it is not listed inside an individual claim portal menu. Search, filter by business, add a user, or create a business from an existing user from that screen.',
+      'Open a claim portal, then open the side menu and choose Users. Users is listed in the claim history menu, not on the Claim Portals hub. Search, filter by business, add a user, or create a business from an existing user from that screen.',
   },
   {
     id: 'profile',

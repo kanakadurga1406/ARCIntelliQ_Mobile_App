@@ -4,6 +4,7 @@ export const HUB_HIDDEN_MENU = new Set([
   'dashboard',
   'add-claim',
   'smart-search',
+  'users',
 ]);
 
 export const USERS_NAV_ITEM: NavItem = {
@@ -31,11 +32,9 @@ function insertUsersItem(items: NavItem[]): NavItem[] {
 }
 
 export function hubMenuItems(items: NavItem[]): NavItem[] {
-  return insertUsersItem(items).filter(
-    item => !HUB_HIDDEN_MENU.has(item.destination),
-  );
+  return items.filter(item => !HUB_HIDDEN_MENU.has(item.destination));
 }
 
 export function portalMenuItems(items: NavItem[]): NavItem[] {
-  return items.filter(item => item.destination !== 'users');
+  return insertUsersItem(items);
 }

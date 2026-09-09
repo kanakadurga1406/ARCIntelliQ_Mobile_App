@@ -41,7 +41,7 @@ import type {
   UsersPageConfig,
 } from '../types/users';
 import type {UsersScreenProps} from '../types/navigation';
-import {hubMenuItems} from '../utils/hubMenu';
+import {portalMenuItems} from '../utils/hubMenu';
 import {mergeUniqueUsers} from '../utils/userList';
 
 const DEFAULT_FILTERS: UserFilters = {
@@ -72,7 +72,7 @@ function useDebouncedValue<T>(value: T, delay: number): T {
 
 const UsersScreen = ({navigation, route}: UsersScreenProps) => {
   const insets = useSafeAreaInsets();
-  const user = route.params.user;
+  const {user, portalId, portalName} = route.params;
   const theme = useMemo(() => getClaimPortalTheme('light'), []);
   const {dialog, showDialog, hideDialog} = useAppDialog();
 
@@ -93,7 +93,9 @@ const UsersScreen = ({navigation, route}: UsersScreenProps) => {
   const [formOpen, setFormOpen] = useState(false);
   const [createBusinessOpen, setCreateBusinessOpen] = useState(false);
   const [accessOpen, setAccessOpen] = useState(false);
-  const [menuItems, setMenuItems] = useState<NavItem[]>(() => hubMenuItems([]));
+  const [menuItems, setMenuItems] = useState<NavItem[]>(() =>
+    portalMenuItems([]),
+  );
   const [selectedUser, setSelectedUser] = useState<AppUser | null>(null);
   const [detailUser, setDetailUser] = useState<AppUser | null>(null);
   const [editingUser, setEditingUser] = useState<AppUser | null>(null);
@@ -188,12 +190,12 @@ const UsersScreen = ({navigation, route}: UsersScreenProps) => {
     fetchClaimPortalsDashboard()
       .then(data => {
         if (!cancelled) {
-          setMenuItems(hubMenuItems(data.menuItems));
+          setMenuItems(portalMenuItems(data.menuItems));
         }
       })
       .catch(() => {
         if (!cancelled) {
-          setMenuItems(hubMenuItems([]));
+          setMenuItems(portalMenuItems([]));
         }
       });
     return () => {
@@ -236,6 +238,10 @@ const UsersScreen = ({navigation, route}: UsersScreenProps) => {
         navigation.navigate('SmartSearch');
         return;
       }
+      if (destination === 'add-claim' && portalId && portalName) {
+        navigation.navigate('ClaimHistory', {user, portalId, portalName});
+        return;
+      }
       if (
         destination === 'home' ||
         destination === 'portals' ||
@@ -255,7 +261,7 @@ const UsersScreen = ({navigation, route}: UsersScreenProps) => {
       }
       showToast('This option will connect when the live API is ready.');
     },
-    [navigation, showToast, signOut, user],
+    [navigation, portalId, portalName, showToast, signOut, user],
   );
 
   const openCreate = useCallback(() => {
@@ -627,6 +633,7 @@ const UsersScreen = ({navigation, route}: UsersScreenProps) => {
         visible={drawerOpen}
         theme={theme}
         user={user}
+        portalName={portalName}
         menuItems={menuItems}
         activeDestination="users"
         topInset={insets.top}
