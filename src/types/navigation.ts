@@ -1,5 +1,6 @@
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import type {ClaimHandlerUser} from './auth';
+import type {AppUser} from './users';
 
 export type RootStackParamList = {
   Splash: undefined;

@@ -5,7 +5,7 @@ import type {ClaimPortalTheme} from '../../theme/claimPortals';
 import {BottomSheet} from '../claimPortals/BottomSheet';
 import {UiIcon} from '../claimPortals/UiIcon';
 
-type UserAction = 'edit' | 'access' | 'delete';
+export type UserAction = 'edit' | 'access' | 'reset' | 'delete';
 
 type UserActionsSheetProps = {
   visible: boolean;
@@ -23,6 +23,7 @@ const ACTIONS: Array<{
 }> = [
   {id: 'edit', label: 'Edit user', icon: 'pencil'},
   {id: 'access', label: 'Manage portal access', icon: 'key'},
+  {id: 'reset', label: 'Reset password', icon: 'shield'},
   {id: 'delete', label: 'Delete user', icon: 'trash', tone: 'danger'},
 ];
 
@@ -44,32 +45,36 @@ export function UserActionsSheet({
           {user.name}
         </Text>
       ) : null}
-      {ACTIONS.map(action => {
+      {ACTIONS.map((action, index) => {
         const destructive = action.tone === 'danger';
         return (
-          <Pressable
-            key={action.id}
-            onPress={() => onAction(action.id)}
-            accessibilityRole="button"
-            accessibilityLabel={action.label}
-            style={({pressed}) => [
-              styles.row,
-              {backgroundColor: pressed ? theme.cardMuted : theme.card},
-            ]}>
-            <View style={[styles.icon, {backgroundColor: theme.chip}]}>
-              <UiIcon
-                name={action.icon}
-                color={destructive ? theme.danger : theme.text}
-              />
-            </View>
-            <Text
-              style={[
-                styles.label,
-                {color: destructive ? theme.danger : theme.text},
+          <React.Fragment key={action.id}>
+            {destructive && index > 0 ? (
+              <View style={[styles.divider, {backgroundColor: theme.border}]} />
+            ) : null}
+            <Pressable
+              onPress={() => onAction(action.id)}
+              accessibilityRole="button"
+              accessibilityLabel={action.label}
+              style={({pressed}) => [
+                styles.row,
+                {backgroundColor: pressed ? theme.cardMuted : theme.card},
               ]}>
-              {action.label}
-            </Text>
-          </Pressable>
+              <View style={[styles.icon, {backgroundColor: theme.chip}]}>
+                <UiIcon
+                  name={action.icon}
+                  color={destructive ? theme.danger : theme.text}
+                />
+              </View>
+              <Text
+                style={[
+                  styles.label,
+                  {color: destructive ? theme.danger : theme.text},
+                ]}>
+                {action.label}
+              </Text>
+            </Pressable>
+          </React.Fragment>
         );
       })}
     </BottomSheet>
@@ -102,5 +107,10 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
     fontWeight: '700',
+  },
+  divider: {
+    height: StyleSheet.hairlineWidth,
+    marginVertical: 6,
+    marginHorizontal: 8,
   },
 });

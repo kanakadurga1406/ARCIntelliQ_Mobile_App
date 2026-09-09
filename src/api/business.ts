@@ -508,7 +508,6 @@ export function dashboardFromBusinesses(
         destination: 'portals',
       },
       {id: 'profile', label: 'Profile', icon: 'profile', destination: 'profile'},
-      {id: 'sign-out', label: 'Sign out', icon: 'logout', destination: 'sign-out'},
     ],
     bottomTabs: [],
     home: {subtitle: '', actions: []},

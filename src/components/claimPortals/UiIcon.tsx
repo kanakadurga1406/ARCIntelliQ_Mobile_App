@@ -11,6 +11,7 @@ import {
   DashboardTabIcon,
   DocumentIcon,
   EyeMiniIcon,
+  EyeOffMiniIcon,
   FolderMiniIcon,
   GridTabIcon,
   HomeTabIcon,
@@ -33,6 +34,7 @@ import {
   MoonIcon,
   ShieldMiniIcon,
   KeyMiniIcon,
+  LockMiniIcon,
 } from './ClaimPortalsIcons';
 
 type IconComponent = React.ComponentType<{color?: string; size?: number}>;
@@ -53,6 +55,7 @@ const ICONS: Record<string, IconComponent> = {
   folder: FolderMiniIcon,
   users: UsersMiniIcon,
   eye: EyeMiniIcon,
+  'eye-off': EyeOffMiniIcon,
   pencil: PencilMiniIcon,
   copy: CopyMiniIcon,
   trash: TrashMiniIcon,
@@ -66,6 +69,7 @@ const ICONS: Record<string, IconComponent> = {
   mail: MailMiniIcon,
   shield: ShieldMiniIcon,
   key: KeyMiniIcon,
+  lock: LockMiniIcon,
   globe: GlobeMiniIcon,
   moon: MoonIcon,
   bell: BellMiniIcon,

@@ -14,6 +14,7 @@ type UserDetailSheetProps = {
   onClose: () => void;
   onEdit: () => void;
   onAccess: () => void;
+  onReset: () => void;
   onDelete: () => void;
 };
 
@@ -24,6 +25,7 @@ export function UserDetailSheet({
   onClose,
   onEdit,
   onAccess,
+  onReset,
   onDelete,
 }: UserDetailSheetProps) {
   const isActive = user?.status === 'active';
@@ -151,6 +153,18 @@ export function UserDetailSheet({
               <Text style={[styles.actionText, {color: theme.text}]}>Access</Text>
             </Pressable>
             <Pressable
+              onPress={onReset}
+              accessibilityRole="button"
+              accessibilityLabel="Reset password"
+              style={[
+                styles.action,
+                styles.actionOutline,
+                {backgroundColor: theme.card, borderColor: theme.border},
+              ]}>
+              <UiIcon name="shield" color={theme.primary} />
+              <Text style={[styles.actionText, {color: theme.text}]}>Reset</Text>
+            </Pressable>
+            <Pressable
               onPress={onDelete}
               accessibilityRole="button"
               accessibilityLabel="Delete user"
@@ -244,10 +258,12 @@ const styles = StyleSheet.create({
   },
   actions: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
   },
   action: {
-    flex: 1,
+    flexGrow: 1,
+    flexBasis: '47%',
     minHeight: 46,
     borderRadius: 14,
     alignItems: 'center',
