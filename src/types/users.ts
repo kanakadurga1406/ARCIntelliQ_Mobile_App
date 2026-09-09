@@ -2,6 +2,12 @@ import type {SortOption, StatusChip} from './claimPortals';
 
 export type UserStatus = 'active' | 'inactive';
 
+export type UserAccessAssignment = {
+  id: string;
+  portalId: string;
+  role: string;
+};
+
 export type AppUser = {
   id: string;
   name: string;
@@ -13,6 +19,14 @@ export type AppUser = {
   status: UserStatus;
   createdAt: string;
   lastLoginAt: string | null;
+  firstName?: string;
+  lastName?: string;
+  mobile?: string;
+  mobileCode?: string;
+  idleMinutes?: number;
+  isAdjuster?: boolean;
+  isSupervisor?: boolean;
+  assignments?: UserAccessAssignment[];
 };
 
 export type UserFilters = {
@@ -38,12 +52,15 @@ export type UserListPage = {
 };
 
 export type UserFormValues = {
-  name: string;
+  firstName: string;
+  lastName: string;
   email: string;
-  portalId: string;
-  role: string;
-  userType: string;
-  status: UserStatus;
+  mobile: string;
+  mobileCode: string;
+  idleMinutes: number;
+  isAdjuster: boolean;
+  isSupervisor: boolean;
+  assignments: UserAccessAssignment[];
 };
 
 export type UserBusinessOption = {

@@ -1,4 +1,10 @@
-import type {AppUser, UserFilters, UserListPage} from '../types/users';
+import type {
+  AppUser,
+  UserAccessAssignment,
+  UserFilters,
+  UserFormValues,
+  UserListPage,
+} from '../types/users';
 
 export const USER_PAGE_SIZE = 10;
 
@@ -105,4 +111,78 @@ export function formatUserDate(isoDate: string | null): string {
 
 export function isValidEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+}
+
+export const IDLE_MINUTE_PRESETS = [15, 30, 60, 120] as const;
+
+export function splitName(name: string): {firstName: string; lastName: string} {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) {
+    return {firstName: '', lastName: ''};
+  }
+  if (parts.length === 1) {
+    return {firstName: parts[0], lastName: ''};
+  }
+  return {firstName: parts[0], lastName: parts.slice(1).join(' ')};
+}
+
+export function displayName(firstName: string, lastName: string): string {
+  return `${firstName.trim()} ${lastName.trim()}`.trim();
+}
+
+export function nextAssignmentId(): string {
+  return `asg-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+}
+
+export function emptyAssignment(portalId = ''): UserAccessAssignment {
+  return {id: nextAssignmentId(), portalId, role: ''};
+}
+
+export function emptyUserForm(defaultPortalId = ''): UserFormValues {
+  return {
+    firstName: '',
+    lastName: '',
+    email: '',
+    mobile: '',
+    mobileCode: '+1',
+    idleMinutes: 15,
+    isAdjuster: false,
+    isSupervisor: false,
+    assignments: [emptyAssignment(defaultPortalId)],
+  };
+}
+
+export function formFromUser(
+  user?: AppUser | null,
+  defaultPortalId = '',
+): UserFormValues {
+  if (!user) {
+    return emptyUserForm(defaultPortalId);
+  }
+
+  const names =
+    user.firstName || user.lastName
+      ? {firstName: user.firstName ?? '', lastName: user.lastName ?? ''}
+      : splitName(user.name);
+
+  return {
+    firstName: names.firstName,
+    lastName: names.lastName,
+    email: user.email,
+    mobile: user.mobile ?? '',
+    mobileCode: user.mobileCode ?? '+1',
+    idleMinutes: user.idleMinutes ?? 15,
+    isAdjuster: user.isAdjuster ?? user.userType === 'Adjuster',
+    isSupervisor: user.isSupervisor ?? user.userType === 'Supervisor',
+    assignments:
+      user.assignments && user.assignments.length > 0
+        ? user.assignments
+        : [
+            {
+              id: nextAssignmentId(),
+              portalId: user.portalId || defaultPortalId,
+              role: user.role,
+            },
+          ],
+  };
 }

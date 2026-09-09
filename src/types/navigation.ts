@@ -1,5 +1,6 @@
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import type {ClaimHandlerUser} from './auth';
+import type {AppUser} from './users';
 
 export type RootStackParamList = {
   Splash: undefined;
@@ -24,6 +25,14 @@ export type RootStackParamList = {
     user: ClaimHandlerUser;
     portalId?: string;
     portalName?: string;
+    savedUserName?: string;
+    savedUserAction?: 'created' | 'updated';
+  };
+  UserSetup: {
+    user: ClaimHandlerUser;
+    portalId?: string;
+    portalName?: string;
+    editingUser?: AppUser;
   };
 };
 
@@ -80,4 +89,9 @@ export type ClaimHistoryScreenProps = NativeStackScreenProps<
 export type UsersScreenProps = NativeStackScreenProps<
   RootStackParamList,
   'Users'
+>;
+
+export type UserSetupScreenProps = NativeStackScreenProps<
+  RootStackParamList,
+  'UserSetup'
 >;

@@ -31,18 +31,16 @@ import {UserActionsSheet} from '../components/users/UserActionsSheet';
 import {UserCard} from '../components/users/UserCard';
 import {UserDetailSheet} from '../components/users/UserDetailSheet';
 import {UserFilterSheet} from '../components/users/UserFilterSheet';
-import {UserFormSheet} from '../components/users/UserFormSheet';
 import {getClaimPortalTheme} from '../theme/claimPortals';
 import type {NavItem} from '../types/claimPortals';
 import type {
   AppUser,
   UserFilters,
-  UserFormValues,
   UsersPageConfig,
 } from '../types/users';
 import type {UsersScreenProps} from '../types/navigation';
 import {portalMenuItems} from '../utils/hubMenu';
-import {mergeUniqueUsers} from '../utils/userList';
+import {formFromUser, mergeUniqueUsers} from '../utils/userList';
 
 const DEFAULT_FILTERS: UserFilters = {
   status: 'all',
@@ -90,7 +88,6 @@ const UsersScreen = ({navigation, route}: UsersScreenProps) => {
   const [saving, setSaving] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
-  const [formOpen, setFormOpen] = useState(false);
   const [createBusinessOpen, setCreateBusinessOpen] = useState(false);
   const [accessOpen, setAccessOpen] = useState(false);
   const [menuItems, setMenuItems] = useState<NavItem[]>(() =>
@@ -98,7 +95,6 @@ const UsersScreen = ({navigation, route}: UsersScreenProps) => {
   );
   const [selectedUser, setSelectedUser] = useState<AppUser | null>(null);
   const [detailUser, setDetailUser] = useState<AppUser | null>(null);
-  const [editingUser, setEditingUser] = useState<AppUser | null>(null);
   const [accessUser, setAccessUser] = useState<AppUser | null>(null);
   const [directoryUsers, setDirectoryUsers] = useState<AppUser[]>([]);
   const [toast, setToast] = useState('');
@@ -186,6 +182,30 @@ const UsersScreen = ({navigation, route}: UsersScreenProps) => {
   }, [loadPage]);
 
   useEffect(() => {
+    const savedUserName = route.params.savedUserName;
+    const savedUserAction = route.params.savedUserAction;
+    if (!savedUserName || !savedUserAction) {
+      return;
+    }
+    showToast(
+      savedUserAction === 'created'
+        ? `${savedUserName} was added.`
+        : `${savedUserName} was updated.`,
+    );
+    loadPage(1, 'replace');
+    navigation.setParams({
+      savedUserName: undefined,
+      savedUserAction: undefined,
+    });
+  }, [
+    loadPage,
+    navigation,
+    route.params.savedUserAction,
+    route.params.savedUserName,
+    showToast,
+  ]);
+
+  useEffect(() => {
     let cancelled = false;
     fetchClaimPortalsDashboard()
       .then(data => {
@@ -265,16 +285,22 @@ const UsersScreen = ({navigation, route}: UsersScreenProps) => {
   );
 
   const openCreate = useCallback(() => {
-    setEditingUser(null);
-    setFormOpen(true);
-  }, []);
+    navigation.navigate('UserSetup', {user, portalId, portalName});
+  }, [navigation, portalId, portalName, user]);
 
-  const openEdit = useCallback((target: AppUser) => {
-    setSelectedUser(null);
-    setDetailUser(null);
-    setEditingUser(target);
-    setFormOpen(true);
-  }, []);
+  const openEdit = useCallback(
+    (target: AppUser) => {
+      setSelectedUser(null);
+      setDetailUser(null);
+      navigation.navigate('UserSetup', {
+        user,
+        portalId,
+        portalName,
+        editingUser: target,
+      });
+    },
+    [navigation, portalId, portalName, user],
+  );
 
   const openAccess = useCallback((target: AppUser) => {
     setSelectedUser(null);
@@ -321,39 +347,6 @@ const UsersScreen = ({navigation, route}: UsersScreenProps) => {
     [showDialog, showToast],
   );
 
-  const handleSaveUser = useCallback(
-    async (values: UserFormValues) => {
-      setSaving(true);
-      try {
-        const saved = await saveUser(values, editingUser?.id);
-        setFormOpen(false);
-        setEditingUser(null);
-        setUsers(current => {
-          const next = editingUser
-            ? current.map(item => (item.id === saved.id ? saved : item))
-            : [saved, ...current.filter(item => item.id !== saved.id)];
-          usersRef.current = next;
-          return next;
-        });
-        if (!editingUser) {
-          setListTotal(current => current + 1);
-        }
-        showToast(
-          editingUser
-            ? `${saved.name} was updated.`
-            : `${saved.name} was added.`,
-        );
-      } catch (error) {
-        showToast(
-          error instanceof Error ? error.message : 'Unable to save this user.',
-        );
-      } finally {
-        setSaving(false);
-      }
-    },
-    [editingUser, showToast],
-  );
-
   const handleCreateBusiness = useCallback(
     async (userId: string, businessName: string) => {
       setSaving(true);
@@ -384,7 +377,7 @@ const UsersScreen = ({navigation, route}: UsersScreenProps) => {
   );
 
   const handleSaveAccess = useCallback(
-    async (portalId: string) => {
+    async (nextPortalId: string) => {
       if (!accessUser) {
         return;
       }
@@ -392,12 +385,14 @@ const UsersScreen = ({navigation, route}: UsersScreenProps) => {
       try {
         const saved = await saveUser(
           {
-            name: accessUser.name,
-            email: accessUser.email,
-            portalId,
-            role: accessUser.role,
-            userType: accessUser.userType,
-            status: accessUser.status,
+            ...formFromUser(accessUser),
+            assignments: [
+              {
+                id: accessUser.assignments?.[0]?.id ?? `asg-${accessUser.id}`,
+                portalId: nextPortalId,
+                role: accessUser.role,
+              },
+            ],
           },
           accessUser.id,
         );
@@ -687,21 +682,6 @@ const UsersScreen = ({navigation, route}: UsersScreenProps) => {
         onEdit={() => detailUser && openEdit(detailUser)}
         onAccess={() => detailUser && openAccess(detailUser)}
         onDelete={() => detailUser && requestDelete(detailUser)}
-      />
-
-      <UserFormSheet
-        visible={formOpen}
-        theme={theme}
-        user={editingUser}
-        businesses={config?.businesses ?? []}
-        roles={config?.roles ?? []}
-        userTypes={config?.userTypes ?? []}
-        saving={saving}
-        onClose={() => {
-          setFormOpen(false);
-          setEditingUser(null);
-        }}
-        onSubmit={handleSaveUser}
       />
 
       <CreateBusinessSheet

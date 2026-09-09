@@ -8,6 +8,7 @@ import type {
 } from '../../types/users';
 import {
   applyUserFilters,
+  displayName,
   paginateUsers,
 } from '../../utils/userList';
 
@@ -240,24 +241,47 @@ export function stubUsersPage(query: UserListQuery): UsersPageResult {
   };
 }
 
-export function stubCreateUser(values: UserFormValues): AppUser {
-  const business =
-    getUsersConfig().businesses.find(item => item.id === values.portalId) ??
-    BUSINESSES.find(item => item.id === values.portalId);
+function resolveBusinessLabel(portalId: string, fallback = 'Unassigned'): string {
+  return (
+    getUsersConfig().businesses.find(item => item.id === portalId)?.label ??
+    BUSINESSES.find(item => item.id === portalId)?.label ??
+    fallback
+  );
+}
 
-  const user: AppUser = {
-    id: nextUserId(),
-    name: values.name.trim(),
+function userFromForm(values: UserFormValues, current?: AppUser): AppUser {
+  const primary = values.assignments.find(item => item.portalId) ?? values.assignments[0];
+  const portalId = primary?.portalId ?? current?.portalId ?? '';
+  const role = primary?.role || current?.role || 'Employee';
+  const firstName = values.firstName.trim();
+  const lastName = values.lastName.trim();
+
+  return {
+    ...(current ?? {
+      id: nextUserId(),
+      createdAt: new Date().toISOString().slice(0, 10),
+      lastLoginAt: null,
+      status: 'active',
+    }),
+    name: displayName(firstName, lastName) || current?.name || 'New user',
+    firstName,
+    lastName,
     email: values.email.trim().toLowerCase(),
-    portalId: values.portalId,
-    portalName: business?.label ?? 'Unassigned',
-    role: values.role,
-    userType: values.userType,
-    status: values.status,
-    createdAt: new Date().toISOString().slice(0, 10),
-    lastLoginAt: null,
+    mobile: values.mobile.trim(),
+    mobileCode: values.mobileCode || '+1',
+    idleMinutes: Math.max(1, Math.round(values.idleMinutes) || 15),
+    isAdjuster: values.isAdjuster,
+    isSupervisor: values.isSupervisor,
+    portalId,
+    portalName: resolveBusinessLabel(portalId, current?.portalName),
+    role,
+    userType: values.isAdjuster ? 'Adjuster' : '',
+    assignments: values.assignments,
   };
+}
 
+export function stubCreateUser(values: UserFormValues): AppUser {
+  const user = userFromForm(values);
   users = [user, ...users];
   return user;
 }
@@ -268,21 +292,7 @@ export function stubUpdateUser(id: string, values: UserFormValues): AppUser {
     throw new Error('User not found.');
   }
 
-  const business =
-    getUsersConfig().businesses.find(item => item.id === values.portalId) ??
-    BUSINESSES.find(item => item.id === values.portalId);
-
-  const next: AppUser = {
-    ...current,
-    name: values.name.trim(),
-    email: values.email.trim().toLowerCase(),
-    portalId: values.portalId,
-    portalName: business?.label ?? current.portalName,
-    role: values.role,
-    userType: values.userType,
-    status: values.status,
-  };
-
+  const next = userFromForm(values, current);
   users = users.map(item => (item.id === id ? next : item));
   return next;
 }
