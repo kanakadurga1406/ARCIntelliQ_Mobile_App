@@ -19,12 +19,19 @@ import {
   verifyClaimHandlerOtp,
 } from '../api/auth';
 import {completePostLoginLanding} from '../api/business';
-import {getPendingOtp, setSession} from '../api/session';
+import {
+  getEnteredPortal,
+  getLoginUserId,
+  getPendingOtp,
+  setPendingOtp,
+  setSession,
+} from '../api/session';
 import {AppDialog, useAppDialog} from '../components/claimPortals/AppDialog';
 import {ChevronIcon} from '../components/PortalIcons';
 import {colors} from '../theme';
 import {getClaimPortalTheme} from '../theme/claimPortals';
 import type {VerifyOtpScreenProps} from '../types/navigation';
+import {openEnteredWorkspace} from '../utils/enteredPortalNav';
 
 const OTP_LENGTH = 6;
 const RESEND_SECONDS = 60;
