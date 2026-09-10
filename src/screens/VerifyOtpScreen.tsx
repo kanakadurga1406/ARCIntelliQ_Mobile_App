@@ -19,13 +19,19 @@ import {
   verifyClaimHandlerOtp,
 } from '../api/auth';
 import {completePostLoginLanding} from '../api/business';
-import {getEnteredPortal, getPendingOtp, setSession} from '../api/session';
-import {openEnteredWorkspace} from '../utils/enteredPortalNav';
+import {
+  getEnteredPortal,
+  getLoginUserId,
+  getPendingOtp,
+  setPendingOtp,
+  setSession,
+} from '../api/session';
 import {AppDialog, useAppDialog} from '../components/claimPortals/AppDialog';
 import {ChevronIcon} from '../components/PortalIcons';
 import {colors} from '../theme';
 import {getClaimPortalTheme} from '../theme/claimPortals';
 import type {VerifyOtpScreenProps} from '../types/navigation';
+import {openEnteredWorkspace} from '../utils/enteredPortalNav';
 
 const OTP_LENGTH = 6;
 const RESEND_SECONDS = 60;
@@ -54,6 +60,15 @@ const VerifyOtpScreen = ({navigation, route}: VerifyOtpScreenProps) => {
   const submittedRef = useRef(false);
 
   const canVerify = code.length === OTP_LENGTH && !isVerifying;
+
+  useEffect(() => {
+    const stored = getPendingOtp();
+    const nextUserId = stored?.userId || getLoginUserId() || userId;
+    const nextEmail = stored?.email || email;
+    if (nextUserId || nextEmail) {
+      setPendingOtp({email: nextEmail, userId: nextUserId});
+    }
+  }, [email, userId]);
 
   useEffect(() => {
     if (seconds <= 0) {
@@ -102,7 +117,7 @@ const VerifyOtpScreen = ({navigation, route}: VerifyOtpScreenProps) => {
       const stored = getPendingOtp();
       const session = await verifyClaimHandlerOtp({
         email: stored?.email || email,
-        userId: stored?.userId || userId,
+        userId: getLoginUserId() || stored?.userId || userId,
         otp: code,
       });
       setSession(session);
@@ -154,7 +169,10 @@ const VerifyOtpScreen = ({navigation, route}: VerifyOtpScreenProps) => {
     setIsResending(true);
     setErrorMessage('');
     try {
-      await resendClaimHandlerOtp({email, userId});
+      await resendClaimHandlerOtp({
+        email: getPendingOtp()?.email || email,
+        userId: getLoginUserId() || userId,
+      });
       setCode('');
       setSeconds(RESEND_SECONDS);
       focusOtp();

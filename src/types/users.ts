@@ -131,7 +131,19 @@ export type CreateBusinessPayload = {
 };
 
 export type ResetUserPasswordPayload = {
-  userId: string;
-  password: string;
-  confirmPassword: string;
+  email: string;
+  new_password: string;
+  new_password_confirmation?: string;
+};
+
+export type ResetUserPasswordResult = {
+  message: string;
+};
+
+export type SendResetPasswordLinkPayload = {
+  email: string;
+};
+
+export type SendResetPasswordLinkResult = {
+  message: string;
 };
