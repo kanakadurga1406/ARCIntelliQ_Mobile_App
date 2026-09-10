@@ -25,7 +25,9 @@ import {
   PhoneField,
   SelectField,
 } from '../components/claimPortals/IntakeFields';
+import {PageBackdrop} from '../components/claimPortals/PageBackdrop';
 import {UiIcon} from '../components/claimPortals/UiIcon';
+import {ClaimAccordionCard} from '../components/claims/ClaimAccordionCard';
 import {colors} from '../theme';
 import {getClaimPortalTheme} from '../theme/claimPortals';
 import type {ClaimPortalTheme} from '../theme/claimPortals';
@@ -111,53 +113,6 @@ function IconTextField({
   );
 }
 
-function Section({
-  index,
-  icon,
-  title,
-  subtitle,
-  theme,
-  action,
-  children,
-}: {
-  index: string;
-  icon: string;
-  title: string;
-  subtitle: string;
-  theme: ClaimPortalTheme;
-  action?: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <View
-      style={[
-        styles.section,
-        {
-          backgroundColor: theme.card,
-          borderColor: theme.border,
-          shadowColor: theme.shadow,
-        },
-      ]}>
-      <View style={styles.sectionHead}>
-        <View style={[styles.sectionIndex, {backgroundColor: theme.primary}]}>
-          <Text style={styles.sectionIndexText}>{index}</Text>
-        </View>
-        <View style={styles.sectionCopy}>
-          <View style={styles.sectionTitleRow}>
-            <UiIcon name={icon} color={theme.primary} size={15} />
-            <Text style={[styles.sectionTitle, {color: theme.text}]}>{title}</Text>
-            {action}
-          </View>
-          <Text style={[styles.sectionSubtitle, {color: theme.textSecondary}]}>
-            {subtitle}
-          </Text>
-        </View>
-      </View>
-      {children}
-    </View>
-  );
-}
-
 const UserSetupScreen = ({navigation, route}: UserSetupScreenProps) => {
   const insets = useSafeAreaInsets();
   const theme = useMemo(() => getClaimPortalTheme('light'), []);
@@ -180,6 +135,7 @@ const UserSetupScreen = ({navigation, route}: UserSetupScreenProps) => {
   ]);
   const [isLoading, setIsLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [openSection, setOpenSection] = useState('profile');
 
   useEffect(() => {
     let cancelled = false;
@@ -286,6 +242,13 @@ const UserSetupScreen = ({navigation, route}: UserSetupScreenProps) => {
     }
 
     setErrors(next);
+    if (next.firstName || next.lastName || next.email || next.mobile) {
+      setOpenSection('profile');
+    } else if (next.idleMinutes) {
+      setOpenSection('security');
+    } else if (next.assignments) {
+      setOpenSection('access');
+    }
     return Object.keys(next).length === 0;
   };
 
@@ -359,6 +322,10 @@ const UserSetupScreen = ({navigation, route}: UserSetupScreenProps) => {
     }
   };
 
+  const toggleSection = (id: string) => {
+    setOpenSection(current => (current === id ? '' : id));
+  };
+
   const idleLabel =
     values.idleMinutes === 1 ? '1 minute' : `${values.idleMinutes || 0} minutes`;
   const minutesBorder = errors.idleMinutes
@@ -366,9 +333,10 @@ const UserSetupScreen = ({navigation, route}: UserSetupScreenProps) => {
     : theme.border;
 
   return (
-    <View style={[styles.root, {backgroundColor: theme.page}]}>
+    <View style={styles.root}>
+      <PageBackdrop />
       <StatusBar barStyle="dark-content" />
-      <View style={{height: insets.top, backgroundColor: theme.page}} />
+      <View style={{height: insets.top}} />
 
       <KeyboardAvoidingView
         style={styles.flex}
@@ -446,12 +414,14 @@ const UserSetupScreen = ({navigation, route}: UserSetupScreenProps) => {
               </Text>
             </View>
 
-            <Section
-              index="01"
+            <ClaimAccordionCard
+              theme={theme}
               icon="profile"
               title="Profile details"
               subtitle="Basic identity information for this claim-handler account."
-              theme={theme}>
+              open={openSection === 'profile'}
+              onToggle={() => toggleSection('profile')}
+              layout="stack">
               <IconTextField
                 theme={theme}
                 label="First name"
@@ -495,14 +465,16 @@ const UserSetupScreen = ({navigation, route}: UserSetupScreenProps) => {
                 onChangeCode={value => update('mobileCode', value)}
                 error={errors.mobile}
               />
-            </Section>
+            </ClaimAccordionCard>
 
-            <Section
-              index="02"
+            <ClaimAccordionCard
+              theme={theme}
               icon="shield"
               title="Session security"
               subtitle="Idle logout rule for this user. Minimum is 1 minute."
-              theme={theme}>
+              open={openSection === 'security'}
+              onToggle={() => toggleSection('security')}
+              layout="stack">
               <View style={styles.idleHead}>
                 <Text style={[styles.idleLabel, {color: theme.text}]}>
                   Logout after inactivity
@@ -566,14 +538,16 @@ const UserSetupScreen = ({navigation, route}: UserSetupScreenProps) => {
                   This user is signed out after {idleLabel} of inactivity.
                 </Text>
               )}
-            </Section>
+            </ClaimAccordionCard>
 
-            <Section
-              index="03"
+            <ClaimAccordionCard
+              theme={theme}
               icon="layers"
               title="Role flags"
               subtitle="Optional claim workflow flags for this user."
-              theme={theme}>
+              open={openSection === 'flags'}
+              onToggle={() => toggleSection('flags')}
+              layout="stack">
               {[
                 {
                   key: 'isAdjuster' as const,
@@ -627,29 +601,29 @@ const UserSetupScreen = ({navigation, route}: UserSetupScreenProps) => {
                   </View>
                 </Pressable>
               ))}
-            </Section>
+            </ClaimAccordionCard>
 
-            <Section
-              index="04"
+            <ClaimAccordionCard
+              theme={theme}
               icon="briefcase"
               title="Access assignment"
               subtitle="Assign portal access and roles for this user."
-              theme={theme}
-              action={
-                <Pressable
-                  onPress={addAssignment}
-                  accessibilityRole="button"
-                  accessibilityLabel="Add business"
-                  style={({pressed}) => [
-                    styles.addBusiness,
-                    {opacity: pressed ? 0.75 : 1},
-                  ]}>
-                  <PlusMiniIcon color={theme.primary} size={11} />
-                  <Text style={[styles.addBusinessText, {color: theme.primary}]}>
-                    Add business
-                  </Text>
-                </Pressable>
-              }>
+              open={openSection === 'access'}
+              onToggle={() => toggleSection('access')}
+              layout="stack">
+              <Pressable
+                onPress={addAssignment}
+                accessibilityRole="button"
+                accessibilityLabel="Add business"
+                style={({pressed}) => [
+                  styles.addBusiness,
+                  {opacity: pressed ? 0.75 : 1},
+                ]}>
+                <PlusMiniIcon color={theme.primary} size={11} />
+                <Text style={[styles.addBusinessText, {color: theme.primary}]}>
+                  Add business
+                </Text>
+              </Pressable>
               {values.assignments.map((assignment, index) => {
                 const businessLabel =
                   businesses.find(item => item.id === assignment.portalId)
@@ -716,7 +690,7 @@ const UserSetupScreen = ({navigation, route}: UserSetupScreenProps) => {
                   {errors.assignments}
                 </Text>
               ) : null}
-            </Section>
+            </ClaimAccordionCard>
 
             <View style={[styles.info, {backgroundColor: colors.accentSoft}]}>
               <UiIcon name="shield" color={theme.primary} size={14} />
@@ -873,53 +847,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 19,
   },
-  section: {
-    borderRadius: 20,
-    borderWidth: 1,
-    padding: 16,
-    marginBottom: 12,
-    shadowOffset: {width: 0, height: 6},
-    shadowOpacity: 0.04,
-    shadowRadius: 10,
-    elevation: 1,
-  },
-  sectionHead: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 14,
-    gap: 10,
-  },
-  sectionIndex: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sectionIndexText: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  sectionCopy: {
-    flex: 1,
-    minWidth: 0,
-  },
-  sectionTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  sectionTitle: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  sectionSubtitle: {
-    marginTop: 3,
-    fontSize: 12,
-    lineHeight: 17,
-  },
   field: {
     marginBottom: 12,
   },
@@ -1031,10 +958,12 @@ const styles = StyleSheet.create({
     lineHeight: 17,
   },
   addBusiness: {
+    alignSelf: 'flex-end',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingVertical: 2,
+    paddingVertical: 4,
+    marginBottom: 10,
   },
   addBusinessText: {
     fontSize: 12,

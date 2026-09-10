@@ -14,6 +14,7 @@ type ClaimAccordionCardProps = {
   icon: string;
   open: boolean;
   onToggle: () => void;
+  layout?: 'grid' | 'stack';
   children?: React.ReactNode;
 };
 
@@ -24,6 +25,7 @@ export function ClaimAccordionCard({
   icon,
   open,
   onToggle,
+  layout = 'grid',
   children,
 }: ClaimAccordionCardProps) {
   const rotate = useRef(new Animated.Value(open ? 1 : 0)).current;
@@ -85,7 +87,11 @@ export function ClaimAccordionCard({
             <ChevronDownIcon color={theme.textMuted} size={14} />
           </Animated.View>
         </Pressable>
-        {open ? <View style={styles.body}>{children}</View> : null}
+        {open ? (
+          <View style={layout === 'stack' ? styles.bodyStack : styles.body}>
+            {children}
+          </View>
+        ) : null}
       </View>
     </FadeSlideIn>
   );
@@ -129,5 +135,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
+  },
+  bodyStack: {
+    paddingHorizontal: 14,
+    paddingBottom: 14,
   },
 });
