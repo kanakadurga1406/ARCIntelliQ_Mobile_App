@@ -451,7 +451,7 @@ const styles = StyleSheet.create({
   },
   page: {
     paddingHorizontal: 16,
-    paddingTop: 4,
+    paddingTop: 16,
     paddingBottom: 40,
   },
   identity: {
@@ -541,8 +541,8 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
   group: {
-    borderRadius: 14,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 16,
+    borderWidth: 1,
     overflow: 'hidden',
   },
   row: {

@@ -83,19 +83,36 @@ export function paginateUsers(
   };
 }
 
+export function uniqueById<T extends {id: string}>(items: T[]): T[] {
+  const seen = new Set<string>();
+  const result: T[] = [];
+
+  items.forEach((item, index) => {
+    const base =
+      item.id != null && String(item.id).trim() !== ''
+        ? String(item.id)
+        : `row-${index}`;
+    const id = seen.has(base) ? `${base}-${index}` : base;
+    seen.add(id);
+    result.push(id === item.id ? item : {...item, id});
+  });
+
+  return result;
+}
+
 export function mergeUniqueUsers(
   current: AppUser[],
   incoming: AppUser[],
 ): AppUser[] {
   const safeCurrent = current ?? [];
-  const safeIncoming = incoming ?? [];
+  const uniqueIncoming = uniqueById(incoming ?? []);
 
   if (safeCurrent.length === 0) {
-    return safeIncoming;
+    return uniqueIncoming;
   }
 
   const seen = new Set(safeCurrent.map(item => item.id));
-  const next = safeIncoming.filter(item => !seen.has(item.id));
+  const next = uniqueIncoming.filter(item => !seen.has(item.id));
   return next.length === 0 ? safeCurrent : [...safeCurrent, ...next];
 }
 

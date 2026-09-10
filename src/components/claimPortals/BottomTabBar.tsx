@@ -1,8 +1,10 @@
-import React from 'react';
-import {Pressable, StyleSheet, Text, View} from 'react-native';
+import React, {useEffect, useRef} from 'react';
+import {Animated, Pressable, StyleSheet, Text, View} from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import type {NavItem} from '../../types/claimPortals';
 import type {ClaimPortalTheme} from '../../theme/claimPortals';
+import {colors} from '../../theme/colors';
+import {motion} from '../../theme/visual';
 import {UiIcon} from './UiIcon';
 
 type BottomTabBarProps = {
@@ -24,6 +26,16 @@ function TabButton({
   color: string;
   onPress: () => void;
 }) {
+  const scale = useRef(new Animated.Value(active ? 1.08 : 1)).current;
+
+  useEffect(() => {
+    Animated.timing(scale, {
+      toValue: active ? 1.1 : 1,
+      duration: motion.fast,
+      useNativeDriver: true,
+    }).start();
+  }, [active, scale]);
+
   return (
     <Pressable
       onPress={onPress}
@@ -31,7 +43,14 @@ function TabButton({
       accessibilityState={{selected: active}}
       accessibilityLabel={tab.label}
       style={styles.tab}>
-      <UiIcon name={tab.icon} color={color} />
+      <Animated.View
+        style={[
+          styles.iconSlot,
+          active && styles.iconSlotActive,
+          {transform: [{scale}]},
+        ]}>
+        <UiIcon name={tab.icon} color={color} />
+      </Animated.View>
       <Text
         style={[styles.label, {color}, active && styles.labelActive]}
         numberOfLines={2}
@@ -64,10 +83,10 @@ export function BottomTabBar({
           paddingBottom: Math.max(bottomInset, 8),
         },
       ]}>
-      {tabs.map(tab => {
+      {tabs.map((tab, index) => {
         if (tab.style === 'fab') {
           return (
-            <View key={tab.id} style={styles.fabSlot}>
+            <View key={`${tab.id}-${index}`} style={styles.fabSlot}>
               <Pressable
                 onPress={() => onDestination(tab.destination)}
                 accessibilityRole="button"
@@ -91,7 +110,7 @@ export function BottomTabBar({
         const isActive = tab.destination === activeTab || tab.id === activeTab;
         return (
           <TabButton
-            key={tab.id}
+            key={`${tab.id}-${index}`}
             tab={tab}
             active={isActive}
             color={isActive ? theme.primary : theme.textMuted}
@@ -108,9 +127,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-end',
     borderTopWidth: StyleSheet.hairlineWidth,
-    paddingTop: 10,
+    paddingTop: 8,
     paddingHorizontal: 4,
     overflow: 'visible',
+    backgroundColor: colors.background,
+  },
+  iconSlot: {
+    width: 36,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+  },
+  iconSlotActive: {
+    backgroundColor: colors.accentSoft,
   },
   tab: {
     flex: 1,

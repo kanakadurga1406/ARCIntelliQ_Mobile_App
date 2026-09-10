@@ -1,7 +1,6 @@
 import React, {useEffect, useMemo, useState} from 'react';
 import {
   ActivityIndicator,
-  Pressable,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -9,15 +8,25 @@ import {
   View,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import {clearBusinessCache} from '../api/business';
 import {fetchFaqs} from '../api/faqs';
-import {ChevronRightIcon} from '../components/claimPortals/ClaimPortalsIcons';
+import {clearSession, getEnteredPortal, getSession} from '../api/session';
+import {AppHeader} from '../components/claimPortals/AppHeader';
+import {PageBackdrop} from '../components/claimPortals/PageBackdrop';
+import {PageHero} from '../components/claimPortals/PageHero';
+import {SideDrawer} from '../components/claimPortals/SideDrawer';
+import {FadeSlideIn, PressableScale} from '../components/ui/Motion';
 import {getClaimPortalTheme} from '../theme/claimPortals';
 import type {FaqItem} from '../types/claimPortals';
 import type {FaqsScreenProps} from '../types/navigation';
+import {navigateFromAppMenu} from '../utils/enteredPortalNav';
 
 const FaqsScreen = ({navigation}: FaqsScreenProps) => {
   const insets = useSafeAreaInsets();
   const theme = useMemo(() => getClaimPortalTheme('light'), []);
+  const user = getSession()?.user;
+  const entered = getEnteredPortal();
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [faqs, setFaqs] = useState<FaqItem[]>([]);
   const [openId, setOpenId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -58,27 +67,21 @@ const FaqsScreen = ({navigation}: FaqsScreenProps) => {
   }, []);
 
   return (
-    <View style={[styles.root, {backgroundColor: theme.page}]}>
+    <View style={styles.root}>
+      <PageBackdrop />
       <StatusBar barStyle="dark-content" />
-      <View style={{height: insets.top, backgroundColor: theme.page}} />
-      <View style={styles.header}>
-        <Pressable
-          onPress={() => navigation.goBack()}
-          accessibilityRole="button"
-          accessibilityLabel="Back"
-          hitSlop={8}
-          style={({pressed}) => [
-            styles.iconButton,
-            {backgroundColor: theme.card, borderColor: theme.border},
-            pressed && {opacity: 0.8},
-          ]}>
-          <View style={styles.backChevron}>
-            <ChevronRightIcon color={theme.text} size={9} />
-          </View>
-        </Pressable>
-        <Text style={[styles.headerTitle, {color: theme.text}]}>FAQs</Text>
-        <View style={styles.headerSpacer} />
-      </View>
+      <AppHeader
+        theme={theme}
+        userName={user?.name || 'Handler'}
+        topInset={insets.top}
+        onMenuPress={() => setDrawerOpen(true)}
+        onFaqsPress={() => {}}
+        onProfilePress={() => {
+          if (user) {
+            navigation.navigate('ClaimPortals', {user, initialTab: 'profile'});
+          }
+        }}
+      />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -86,12 +89,11 @@ const FaqsScreen = ({navigation}: FaqsScreenProps) => {
           styles.content,
           {paddingBottom: insets.bottom + 28},
         ]}>
-        <Text style={[styles.title, {color: theme.text}]}>
-          Frequently asked questions
-        </Text>
-        <Text style={[styles.subtitle, {color: theme.textSecondary}]}>
-          Quick answers for claim handlers working in ARCIntelliQ.
-        </Text>
+        <PageHero
+          icon="faq"
+          title="FAQs"
+          subtitle="Quick answers for claim handlers working in ARCIntelliQ."
+        />
 
         {isLoading ? (
           <ActivityIndicator color={theme.primary} style={styles.loader} />
@@ -106,19 +108,19 @@ const FaqsScreen = ({navigation}: FaqsScreenProps) => {
         {faqs.map(item => {
           const open = openId === item.id;
           return (
-            <Pressable
-              key={item.id}
+            <FadeSlideIn key={item.id}>
+            <PressableScale
               onPress={() => setOpenId(open ? null : item.id)}
               accessibilityRole="button"
               accessibilityState={{expanded: open}}
               accessibilityLabel={item.question}
-              style={({pressed}) => [
+              contentStyle={[
                 styles.card,
                 {
                   backgroundColor: theme.card,
-                  borderColor: open ? theme.primary : theme.border,
+                  borderColor: open ? theme.primary : 'transparent',
+                  borderWidth: open ? 1.5 : 0,
                 },
-                pressed && {opacity: 0.92},
               ]}>
               <View style={styles.questionRow}>
                 <Text style={[styles.question, {color: theme.text}]}>
@@ -137,10 +139,42 @@ const FaqsScreen = ({navigation}: FaqsScreenProps) => {
                   {item.answer}
                 </Text>
               ) : null}
-            </Pressable>
+            </PressableScale>
+            </FadeSlideIn>
           );
         })}
       </ScrollView>
+
+      {user ? (
+        <SideDrawer
+          visible={drawerOpen}
+          theme={theme}
+          user={user}
+          portalName={entered?.businessName}
+          menuItems={entered?.menu ?? []}
+          activeDestination="faqs"
+          topInset={insets.top}
+          bottomInset={insets.bottom}
+          onClose={() => setDrawerOpen(false)}
+          onNavigate={destination => {
+            setDrawerOpen(false);
+            const result = navigateFromAppMenu(
+              navigation,
+              user,
+              destination,
+              'faqs',
+            );
+            if (result === 'sign-out') {
+              clearSession();
+              clearBusinessCache();
+              navigation.reset({
+                index: 0,
+                routes: [{name: 'PortalSelect'}],
+              });
+            }
+          }}
+        />
+      ) : null}
     </View>
   );
 };
@@ -151,36 +185,9 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingBottom: 10,
-  },
-  iconButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  backChevron: {
-    transform: [{rotate: '180deg'}],
-    marginRight: 2,
-  },
-  headerTitle: {
-    flex: 1,
-    textAlign: 'center',
-    fontSize: 17,
-    fontWeight: '800',
-  },
-  headerSpacer: {
-    width: 38,
-  },
   content: {
     paddingHorizontal: 16,
-    paddingTop: 8,
+    paddingTop: 16,
   },
   title: {
     fontSize: 20,
@@ -197,11 +204,16 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   card: {
-    borderWidth: 1,
-    borderRadius: 16,
+    borderWidth: 0,
+    borderRadius: 22,
     paddingHorizontal: 16,
-    paddingVertical: 14,
-    marginBottom: 10,
+    paddingVertical: 16,
+    marginBottom: 12,
+    shadowColor: '#1B3A66',
+    shadowOffset: {width: 0, height: 8},
+    shadowOpacity: 0.07,
+    shadowRadius: 16,
+    elevation: 2,
   },
   questionRow: {
     flexDirection: 'row',

@@ -1,5 +1,6 @@
 import type {AuthSession} from '../types/auth';
 import type {NavItem} from '../types/claimPortals';
+import type {ClaimRecord} from '../types/claims';
 
 export type PendingOtp = {
   email: string;
@@ -11,12 +12,14 @@ export type EnteredPortal = {
   businessName: string;
   logoUrl: string;
   menu: NavItem[];
+  firstFeature: NavItem | null;
 };
 
 let currentSession: AuthSession | null = null;
 let pendingOtp: PendingOtp | null = null;
 let loginUserId = '';
 let enteredPortal: EnteredPortal | null = null;
+let selectedClaim: ClaimRecord | null = null;
 
 export function setSession(session: AuthSession): void {
   currentSession = session;
@@ -29,6 +32,15 @@ export function getSession(): AuthSession | null {
 export function clearSession(): void {
   currentSession = null;
   enteredPortal = null;
+  selectedClaim = null;
+}
+
+export function setSelectedClaim(next: ClaimRecord | null): void {
+  selectedClaim = next;
+}
+
+export function getSelectedClaim(): ClaimRecord | null {
+  return selectedClaim;
 }
 
 export function setEnteredPortal(next: EnteredPortal): void {

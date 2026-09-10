@@ -21,6 +21,16 @@ export type ClaimStatus = {
   hint?: string;
 };
 
+export type ClaimColumn = {
+  key: string;
+  label: string;
+  rowKey: string;
+  icon: string;
+  cell: string;
+  visible: boolean;
+  order: number;
+};
+
 export type ClaimRecord = {
   id: string;
   portalId: string;
@@ -28,7 +38,9 @@ export type ClaimRecord = {
   location?: string;
   status: ClaimStatus;
   fields: ClaimField[];
+  cardFields: ClaimField[];
   values?: Record<string, string | number>;
+  raw: Record<string, string>;
 };
 
 export type ClaimFilterControl = {

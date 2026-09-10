@@ -2,7 +2,8 @@ import React from 'react';
 import {Pressable, StyleSheet, Text, TextInput, View} from 'react-native';
 import type {SortOption, StatusChip} from '../../types/claimPortals';
 import type {ClaimPortalTheme} from '../../theme/claimPortals';
-import {FilterIcon, SearchIcon} from './ClaimPortalsIcons';
+import {colors} from '../../theme/colors';
+import {ChevronDownIcon, FilterIcon, SearchIcon} from './ClaimPortalsIcons';
 
 type PortalListControlsProps = {
   theme: ClaimPortalTheme;
@@ -47,11 +48,7 @@ export function PortalListControls({
   return (
     <View>
       <View style={styles.searchRow}>
-        <View
-          style={[
-            styles.searchBox,
-            {backgroundColor: theme.input, borderColor: theme.border},
-          ]}>
+        <View style={styles.searchBox}>
           <SearchIcon color={theme.textMuted} />
           <TextInput
             key={`portal-search-${searchFocusToken}`}
@@ -71,10 +68,9 @@ export function PortalListControls({
           accessibilityLabel="Filter portals"
           style={({pressed}) => [
             styles.filterButton,
-            {backgroundColor: theme.card, borderColor: theme.border},
-            pressed && {opacity: 0.85},
+            pressed && {transform: [{scale: 0.96}], opacity: 0.9},
           ]}>
-          <FilterIcon color={theme.text} />
+          <FilterIcon color={colors.onPrimary} />
           {filterCount > 0 ? (
             <View style={styles.filterBadge}>
               <Text style={styles.filterBadgeText}>{filterCount}</Text>
@@ -84,26 +80,25 @@ export function PortalListControls({
       </View>
 
       <View style={styles.chips}>
-        {chips.map(chip => {
+        {chips.map((chip, index) => {
           const selected = chip.id === activeStatus;
           const countLabel =
             typeof chip.count === 'number' ? ` (${chip.count})` : '';
           return (
             <Pressable
-              key={chip.id}
+              key={`${chip.id}-${index}`}
               onPress={() => onStatusChange(chip.id)}
               accessibilityRole="button"
               accessibilityState={{selected}}
-              style={[
+              style={({pressed}) => [
                 styles.chip,
-                {
-                  backgroundColor: selected ? theme.primary : theme.chip,
-                },
+                selected ? styles.chipActive : styles.chipIdle,
+                pressed && {transform: [{scale: 0.97}], opacity: 0.9},
               ]}>
               <Text
                 style={[
                   styles.chipText,
-                  {color: selected ? theme.onPrimary : theme.chipText},
+                  {color: selected ? colors.onPrimary : colors.navy},
                 ]}>
                 {chip.label}
                 {countLabel}
@@ -123,10 +118,10 @@ export function PortalListControls({
           <Pressable
             onPress={onSortPress}
             accessibilityRole="button"
-            accessibilityLabel="Change sort order">
-            <Text style={[styles.sort, {color: theme.primary}]}>
-              Sort by: {sortLabel}
-            </Text>
+            accessibilityLabel="Change sort order"
+            style={styles.sortRow}>
+            <Text style={styles.sort}>Sort by: {sortLabel}</Text>
+            <ChevronDownIcon color={colors.primary} size={12} />
           </Pressable>
         ) : null}
       </View>
@@ -142,27 +137,37 @@ const styles = StyleSheet.create({
   },
   searchBox: {
     flex: 1,
-    minHeight: 46,
-    borderRadius: 14,
-    borderWidth: 1,
-    paddingHorizontal: 12,
+    minHeight: 50,
+    borderRadius: 999,
+    backgroundColor: colors.surface,
+    paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    shadowColor: colors.shadow,
+    shadowOffset: {width: 0, height: 6},
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 2,
   },
   searchInput: {
     flex: 1,
-    height: 46,
+    height: 50,
     fontSize: 14,
     padding: 0,
   },
   filterButton: {
-    width: 46,
-    height: 46,
-    borderRadius: 14,
-    borderWidth: 1,
+    width: 50,
+    height: 50,
+    borderRadius: 16,
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: colors.primary,
+    shadowOffset: {width: 0, height: 8},
+    shadowOpacity: 0.28,
+    shadowRadius: 12,
+    elevation: 4,
   },
   filterBadge: {
     position: 'absolute',
@@ -171,7 +176,7 @@ const styles = StyleSheet.create({
     minWidth: 16,
     height: 16,
     borderRadius: 8,
-    backgroundColor: '#2B74FF',
+    backgroundColor: colors.navy,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 4,
@@ -185,15 +190,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-    marginTop: 12,
+    marginTop: 14,
   },
   chip: {
     borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  chipActive: {
+    backgroundColor: colors.primary,
+  },
+  chipIdle: {
+    backgroundColor: '#E7EEF6',
   },
   chipText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
   },
   listHeader: {
@@ -207,8 +218,14 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
   },
+  sortRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
   sort: {
     fontSize: 13,
     fontWeight: '700',
+    color: colors.primary,
   },
 });

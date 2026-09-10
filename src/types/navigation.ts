@@ -20,25 +20,15 @@ export type RootStackParamList = {
     user: ClaimHandlerUser;
     portalId: string;
     portalName: string;
+    openAddClaim?: boolean;
   };
   Users: {
     user: ClaimHandlerUser;
     portalId?: string;
     portalName?: string;
-    savedUserName?: string;
-    savedUserAction?: 'created' | 'updated' | 'password';
   };
-  UserSetup: {
-    user: ClaimHandlerUser;
-    portalId?: string;
-    portalName?: string;
-    editingUser?: AppUser;
-  };
-  UserResetPassword: {
-    user: ClaimHandlerUser;
-    portalId?: string;
-    portalName?: string;
-    targetUser: AppUser;
+  ClaimDetail: {
+    claimId: string;
   };
 };
 
@@ -97,12 +87,7 @@ export type UsersScreenProps = NativeStackScreenProps<
   'Users'
 >;
 
-export type UserSetupScreenProps = NativeStackScreenProps<
+export type ClaimDetailScreenProps = NativeStackScreenProps<
   RootStackParamList,
-  'UserSetup'
->;
-
-export type UserResetPasswordScreenProps = NativeStackScreenProps<
-  RootStackParamList,
-  'UserResetPassword'
+  'ClaimDetail'
 >;

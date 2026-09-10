@@ -90,7 +90,7 @@ export function getClaimPortalTheme(scheme: ThemeScheme): ClaimPortalTheme {
 
   return {
     scheme,
-    page: '#F4F7FB',
+    page: colors.page,
     card: colors.surface,
     cardMuted: colors.surfaceMuted,
     text: colors.textPrimary,
@@ -98,7 +98,7 @@ export function getClaimPortalTheme(scheme: ThemeScheme): ClaimPortalTheme {
     textMuted: colors.textMuted,
     border: colors.border,
     input: colors.inputFill,
-    chip: '#EEF2F7',
+    chip: '#EAF2FF',
     chipText: colors.textPrimary,
     overlay: 'rgba(16, 35, 63, 0.46)',
     drawer: '#0D1B2E',

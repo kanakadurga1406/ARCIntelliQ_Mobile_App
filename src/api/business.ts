@@ -13,6 +13,7 @@ import {
   applyPortalFilters,
   paginatePortals,
   PORTAL_PAGE_SIZE,
+  uniqueById,
 } from '../utils/portalList';
 import {ApiError, apiRequest} from './client';
 import {
@@ -20,6 +21,7 @@ import {
   setEnteredPortal,
   type EnteredPortal,
 } from './session';
+import {isMobileMenuRoute} from '../utils/enteredPortalNav';
 
 export type PostLoginDestination =
   | {kind: 'portals'}
@@ -131,14 +133,57 @@ function menuIcon(icon: string, name: string): string {
 }
 
 function menuDestination(route: string, name: string): string {
-  const raw = `${route} ${name}`.toLowerCase();
-  if (raw.includes('intake')) {
+  const path = route.replace(/^\/+/, '').split('?')[0].toLowerCase();
+  const last = path.split('/').filter(Boolean).pop() || '';
+  if (last === 'intake') {
     return 'add-claim';
   }
-  if (raw.includes('claim')) {
-    return 'claims';
+  if (last === 'faq' || last === 'faqs') {
+    return 'faqs';
+  }
+  if (last) {
+    return last;
   }
   return name.toLowerCase().replace(/\s+/g, '-');
+}
+
+function toNavItem(row: Record<string, unknown>): NavItem | null {
+  const route = readString(row.route);
+  const label = readString(row.name, row.label);
+  const id = readString(route, label, row.id);
+  if (!id || !label) {
+    return null;
+  }
+  return {
+    id,
+    label,
+    icon: menuIcon(readString(row.icon), label),
+    destination: menuDestination(route, label),
+    route: route || undefined,
+  };
+}
+
+function firstFeatureFromMenu(value: unknown): NavItem | null {
+  if (!Array.isArray(value)) {
+    return null;
+  }
+
+  for (const node of value) {
+    const row = asRecord(node);
+    if (!row) {
+      continue;
+    }
+    const item = toNavItem(row);
+    if (item?.route && isMobileMenuRoute(item.route)) {
+      return item;
+    }
+    const nested = firstFeatureFromMenu(row.children);
+    if (nested) {
+      return nested;
+    }
+  }
+
+  return null;
 }
 
 function flattenMenu(value: unknown): NavItem[] {
@@ -157,19 +202,12 @@ function flattenMenu(value: unknown): NavItem[] {
       items.push(...children);
       return;
     }
-    const id = readString(row.id, row.route, row.name);
-    const label = readString(row.name, row.label);
-    if (!id || !label) {
-      return;
+    const item = toNavItem(row);
+    if (item) {
+      items.push(item);
     }
-    items.push({
-      id,
-      label,
-      icon: menuIcon(readString(row.icon), label),
-      destination: menuDestination(readString(row.route), label),
-    });
   });
-  return items;
+  return uniqueById(items);
 }
 
 export function parseEnteredPortal(payload: unknown): EnteredPortal | null {
@@ -195,9 +233,11 @@ export function parseEnteredPortal(payload: unknown): EnteredPortal | null {
     return null;
   }
 
-  const menu = flattenMenu(nested.left_menu).length
-    ? flattenMenu(nested.left_menu)
-    : flattenMenu(context?.menu);
+  const rawMenu = Array.isArray(nested.left_menu)
+    ? nested.left_menu
+    : context?.menu;
+  const menu = flattenMenu(rawMenu);
+  const firstFeature = firstFeatureFromMenu(rawMenu);
 
   return {
     businessId,
@@ -206,7 +246,11 @@ export function parseEnteredPortal(payload: unknown): EnteredPortal | null {
       nested.business_logo_url,
       business?.business_logo_url,
     ),
-    menu,
+    firstFeature,
+    menu: [
+      ...menu,
+      {id: 'sign-out', label: 'Sign out', icon: 'logout', destination: 'sign-out'},
+    ],
   };
 }
 
@@ -216,7 +260,7 @@ export function toClaimPortal(raw: unknown): ClaimPortal | null {
     return null;
   }
 
-  const id = readString(row.id, row.business_id, row.uuid);
+  const id = readString(row.business_id, row.uuid, row.id);
   if (!id) {
     return null;
   }
@@ -269,9 +313,11 @@ export function toClaimPortal(raw: unknown): ClaimPortal | null {
 
 export function mapBusinesses(payload: unknown): ClaimPortal[] {
   const list = findBusinessRows(payload);
-  const items = list
-    .map(toClaimPortal)
-    .filter((item): item is ClaimPortal => Boolean(item));
+  const items = uniqueById(
+    list
+      .map(toClaimPortal)
+      .filter((item): item is ClaimPortal => Boolean(item)),
+  );
   console.log('[ARC business] mapped count', items.length);
   return items;
 }

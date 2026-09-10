@@ -12,16 +12,19 @@ import {
   View,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import {clearBusinessCache} from '../api/business';
+import {clearSession, getEnteredPortal, getSession} from '../api/session';
 import {
   applySmartSearch,
   askSmartSearch,
   fetchSmartSearchConfig,
 } from '../api/smartSearch';
 import {AppDialog, useAppDialog} from '../components/claimPortals/AppDialog';
-import {
-  ChevronDownIcon,
-  ChevronRightIcon,
-} from '../components/claimPortals/ClaimPortalsIcons';
+import {AppHeader} from '../components/claimPortals/AppHeader';
+import {PageBackdrop} from '../components/claimPortals/PageBackdrop';
+import {PageHero} from '../components/claimPortals/PageHero';
+import {ChevronDownIcon} from '../components/claimPortals/ClaimPortalsIcons';
+import {SideDrawer} from '../components/claimPortals/SideDrawer';
 import {UiIcon} from '../components/claimPortals/UiIcon';
 import {
   DatePicker,
@@ -38,6 +41,7 @@ import type {
   SmartSearchMode,
 } from '../types/smartSearch';
 import type {SmartSearchScreenProps} from '../types/navigation';
+import {navigateFromAppMenu} from '../utils/enteredPortalNav';
 
 type PickerState = {
   filterId: string;
@@ -60,6 +64,9 @@ function nextId(prefix: string) {
 const SmartSearchScreen = ({navigation}: SmartSearchScreenProps) => {
   const insets = useSafeAreaInsets();
   const theme = useMemo(() => getClaimPortalTheme('light'), []);
+  const user = getSession()?.user;
+  const entered = getEnteredPortal();
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const [config, setConfig] = useState<SmartSearchConfig | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -366,29 +373,27 @@ const SmartSearchScreen = ({navigation}: SmartSearchScreenProps) => {
   };
 
   return (
-    <View style={[styles.root, {backgroundColor: theme.page}]}>
+    <View style={styles.root}>
+      <PageBackdrop />
       <StatusBar barStyle="dark-content" />
-      <View style={{height: insets.top, backgroundColor: theme.page}} />
-
-      <View style={styles.header}>
-        <Pressable
-          onPress={() => navigation.goBack()}
-          accessibilityRole="button"
-          accessibilityLabel="Back"
-          hitSlop={8}
-          style={({pressed}) => [
-            styles.iconButton,
-            {backgroundColor: theme.card, borderColor: theme.border},
-            pressed && {opacity: 0.8},
-          ]}>
-          <View style={styles.backChevron}>
-            <ChevronRightIcon color={theme.text} size={9} />
-          </View>
-        </Pressable>
-        <Text style={[styles.title, {color: theme.text}]}>
-          {copy?.title || 'Smart Search'}
-        </Text>
-        <View style={styles.headerSpacer} />
+      <AppHeader
+        theme={theme}
+        userName={user?.name || 'Handler'}
+        topInset={insets.top}
+        onMenuPress={() => setDrawerOpen(true)}
+        onFaqsPress={() => navigation.navigate('Faqs')}
+        onProfilePress={() => {
+          if (user) {
+            navigation.navigate('ClaimPortals', {user, initialTab: 'profile'});
+          }
+        }}
+      />
+      <View style={styles.heroWrap}>
+        <PageHero
+          icon="search"
+          title={copy?.title || 'Smart Search'}
+          subtitle="Find claims with filters or a question."
+        />
       </View>
 
       {isLoading ? (
@@ -678,6 +683,37 @@ const SmartSearchScreen = ({navigation}: SmartSearchScreenProps) => {
         buttons={dialog.buttons}
         onClose={hideDialog}
       />
+
+      {user ? (
+        <SideDrawer
+          visible={drawerOpen}
+          theme={theme}
+          user={user}
+          portalName={entered?.businessName}
+          menuItems={entered?.menu ?? []}
+          activeDestination="smart-search"
+          topInset={insets.top}
+          bottomInset={insets.bottom}
+          onClose={() => setDrawerOpen(false)}
+          onNavigate={destination => {
+            setDrawerOpen(false);
+            const result = navigateFromAppMenu(
+              navigation,
+              user,
+              destination,
+              'smart-search',
+            );
+            if (result === 'sign-out') {
+              clearSession();
+              clearBusinessCache();
+              navigation.reset({
+                index: 0,
+                routes: [{name: 'PortalSelect'}],
+              });
+            }
+          }}
+        />
+      ) : null}
     </View>
   );
 };
@@ -722,33 +758,9 @@ const styles = StyleSheet.create({
   flex: {
     flex: 1,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  heroWrap: {
     paddingHorizontal: 16,
-    paddingBottom: 10,
-  },
-  iconButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  backChevron: {
-    transform: [{rotate: '180deg'}],
-    marginRight: 2,
-  },
-  title: {
-    flex: 1,
-    textAlign: 'center',
-    fontSize: 17,
-    lineHeight: 22,
-    fontWeight: '800',
-  },
-  headerSpacer: {
-    width: 38,
+    paddingTop: 8,
   },
   centered: {
     paddingTop: 40,

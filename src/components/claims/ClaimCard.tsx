@@ -1,9 +1,11 @@
 import React from 'react';
-import {Pressable, StyleSheet, Text, View} from 'react-native';
+import {StyleSheet, Text, View} from 'react-native';
 import type {ClaimRecord} from '../../types/claims';
 import type {ClaimPortalTheme} from '../../theme/claimPortals';
+import {shadows} from '../../theme/visual';
 import {ChevronRightIcon} from '../claimPortals/ClaimPortalsIcons';
 import {getToneColors, UiIcon} from '../claimPortals/UiIcon';
+import {FadeSlideIn, PressableScale} from '../ui/Motion';
 
 type ClaimCardProps = {
   theme: ClaimPortalTheme;
@@ -13,20 +15,21 @@ type ClaimCardProps = {
 
 export function ClaimCard({theme, claim, onPress}: ClaimCardProps) {
   const tone = getToneColors(theme, claim.status.tone);
+  const fields =
+    (claim.cardFields?.length ?? 0) > 0 ? claim.cardFields : claim.fields;
 
   return (
-    <Pressable
+    <FadeSlideIn>
+    <PressableScale
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={`${claim.incidentNumber}, ${claim.status.label}`}
-      style={({pressed}) => [
+      contentStyle={[
         styles.card,
         {
           backgroundColor: theme.card,
-          borderColor: theme.border,
           shadowColor: theme.shadow,
         },
-        pressed && {opacity: 0.94},
       ]}>
       <View style={styles.topRow}>
         <View style={styles.titleBlock}>
@@ -54,9 +57,9 @@ export function ClaimCard({theme, claim, onPress}: ClaimCardProps) {
         </Text>
       ) : null}
 
-      {claim.fields.length > 0 ? (
+      {fields.length > 0 ? (
         <View style={styles.fields}>
-          {claim.fields.map(field => (
+          {fields.map(field => (
             <View key={field.id} style={styles.field}>
               <Text style={[styles.fieldLabel, {color: theme.textMuted}]}>
                 {field.label}
@@ -82,20 +85,17 @@ export function ClaimCard({theme, claim, onPress}: ClaimCardProps) {
         </Text>
         <ChevronRightIcon color={theme.textMuted} />
       </View>
-    </Pressable>
+    </PressableScale>
+    </FadeSlideIn>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 18,
-    borderWidth: 1,
-    padding: 14,
-    marginBottom: 12,
-    shadowOffset: {width: 0, height: 6},
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 2,
+    borderRadius: 24,
+    padding: 16,
+    marginBottom: 14,
+    ...shadows.card,
   },
   topRow: {
     flexDirection: 'row',

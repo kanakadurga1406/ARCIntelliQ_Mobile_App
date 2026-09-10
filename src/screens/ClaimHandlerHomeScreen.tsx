@@ -1,7 +1,11 @@
-import React from 'react';
+import React, {useMemo} from 'react';
 import {Pressable, StatusBar, StyleSheet, Text, View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {clearSession} from '../api/session';
+import {AppHeader} from '../components/claimPortals/AppHeader';
+import {PageBackdrop} from '../components/claimPortals/PageBackdrop';
+import {PageHero} from '../components/claimPortals/PageHero';
+import {getClaimPortalTheme} from '../theme/claimPortals';
 import {colors} from '../theme';
 import type {ClaimHandlerHomeScreenProps} from '../types/navigation';
 
@@ -10,6 +14,7 @@ const ClaimHandlerHomeScreen = ({
   route,
 }: ClaimHandlerHomeScreenProps) => {
   const insets = useSafeAreaInsets();
+  const theme = useMemo(() => getClaimPortalTheme('light'), []);
   const user = route.params.user;
 
   const signOut = () => {
@@ -21,17 +26,34 @@ const ClaimHandlerHomeScreen = ({
   };
 
   return (
-    <View style={[styles.root, {paddingTop: insets.top + 24}]}>
+    <View style={styles.root}>
+      <PageBackdrop />
       <StatusBar barStyle="dark-content" />
-      <Text style={styles.kicker}>Claim Handler</Text>
-      <Text style={styles.title}>Welcome, {user.name || 'Handler'}</Text>
-      <Text style={styles.subtitle}>{user.title}</Text>
-      <Text style={styles.email}>{user.email}</Text>
-      <Pressable
-        onPress={signOut}
-        style={({pressed}) => [styles.button, pressed && styles.buttonPressed]}>
-        <Text style={styles.buttonText}>Sign out</Text>
-      </Pressable>
+      <AppHeader
+        theme={theme}
+        userName={user.name}
+        topInset={insets.top}
+        onMenuPress={() =>
+          navigation.navigate('ClaimPortals', {user, initialTab: 'portals'})
+        }
+        onFaqsPress={() => navigation.navigate('Faqs')}
+        onProfilePress={() =>
+          navigation.navigate('ClaimPortals', {user, initialTab: 'profile'})
+        }
+      />
+      <View style={styles.body}>
+        <PageHero
+          icon="users"
+          title={`Welcome, ${user.name || 'Handler'}`}
+          subtitle={user.title || 'Claim Handler'}
+        />
+        <Text style={styles.email}>{user.email}</Text>
+        <Pressable
+          onPress={signOut}
+          style={({pressed}) => [styles.button, pressed && styles.buttonPressed]}>
+          <Text style={styles.buttonText}>Sign out</Text>
+        </Pressable>
+      </View>
     </View>
   );
 };
@@ -41,8 +63,10 @@ export default ClaimHandlerHomeScreen;
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: colors.background,
+  },
+  body: {
     paddingHorizontal: 24,
+    paddingTop: 24,
   },
   kicker: {
     fontSize: 13,

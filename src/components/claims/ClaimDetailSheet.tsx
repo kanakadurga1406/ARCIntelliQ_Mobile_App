@@ -1,5 +1,5 @@
 import React from 'react';
-import {Pressable, StyleSheet, Text, View} from 'react-native';
+import {Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
 import type {PortalAction} from '../../types/claimPortals';
 import type {ClaimRecord} from '../../types/claims';
 import type {ClaimPortalTheme} from '../../theme/claimPortals';
@@ -34,7 +34,8 @@ export function ClaimDetailSheet({
       visible={visible}
       title={claim.incidentNumber}
       theme={theme}
-      onClose={onClose}>
+      onClose={onClose}
+      contentStyle={styles.sheet}>
       <View style={styles.statusRow}>
         <View style={[styles.badge, {backgroundColor: tone.bg}]}>
           <Text style={[styles.badgeText, {color: tone.fg}]}>
@@ -48,26 +49,26 @@ export function ClaimDetailSheet({
         ) : null}
       </View>
 
-      {claim.location ? (
-        <View style={styles.row}>
-          <Text style={[styles.label, {color: theme.textMuted}]}>Location</Text>
-          <Text style={[styles.value, {color: theme.text}]}>{claim.location}</Text>
-        </View>
-      ) : null}
-
-      {claim.fields.map(field => (
-        <View key={field.id} style={styles.row}>
-          <Text style={[styles.label, {color: theme.textMuted}]}>
-            {field.label}
-          </Text>
-          <View style={styles.valueRow}>
-            {field.icon ? (
-              <UiIcon name={field.icon} color={theme.textMuted} size={13} />
-            ) : null}
-            <Text style={[styles.value, {color: theme.text}]}>{field.value}</Text>
+      <ScrollView
+        style={styles.list}
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}>
+        {claim.fields.map(field => (
+          <View key={field.id} style={styles.row}>
+            <Text style={[styles.label, {color: theme.textMuted}]}>
+              {field.label}
+            </Text>
+            <View style={styles.valueRow}>
+              {field.icon ? (
+                <UiIcon name={field.icon} color={theme.textMuted} size={13} />
+              ) : null}
+              <Text style={[styles.value, {color: theme.text}]}>
+                {field.value}
+              </Text>
+            </View>
           </View>
-        </View>
-      ))}
+        ))}
+      </ScrollView>
 
       {actions.length > 0 ? (
         <View style={styles.actions}>
@@ -101,6 +102,15 @@ export function ClaimDetailSheet({
 }
 
 const styles = StyleSheet.create({
+  sheet: {
+    maxHeight: '88%',
+  },
+  list: {
+    maxHeight: 520,
+  },
+  listContent: {
+    paddingBottom: 8,
+  },
   statusRow: {
     flexDirection: 'row',
     alignItems: 'center',

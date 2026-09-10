@@ -125,14 +125,7 @@ export function SideDrawer({
           contentContainerStyle={styles.menu}>
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>MENU</Text>
-            {menuItems
-            .filter(
-              item =>
-                item.destination !== 'sign-out' &&
-                item.id !== 'sign-out' &&
-                item.label.toLowerCase() !== 'sign out',
-            )
-            .map(item => {
+            {menuItems.map((item, index) => {
               const isActive = item.destination === activeDestination;
               const content = (
                 <>
@@ -151,7 +144,7 @@ export function SideDrawer({
               if (isActive) {
                 return (
                   <LinearGradient
-                    key={item.id}
+                    key={`${item.id}-${index}`}
                     colors={['#2B74FF', '#1E5EFF']}
                     start={{x: 0, y: 0}}
                     end={{x: 1, y: 0}}
@@ -167,7 +160,7 @@ export function SideDrawer({
 
               return (
                 <Pressable
-                  key={item.id}
+                  key={`${item.id}-${index}`}
                   onPress={() => onNavigate(item.destination, item.label)}
                   style={({pressed}) => [
                     styles.item,
