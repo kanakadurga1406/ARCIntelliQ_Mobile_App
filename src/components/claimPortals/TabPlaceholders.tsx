@@ -204,6 +204,7 @@ type ProfileTabProps = {
   page: ProfilePage;
   extraFields: ProfileField[];
   onSignOut: () => void;
+  onBack?: () => void;
 };
 
 export function ProfileTabBody({
@@ -212,6 +213,7 @@ export function ProfileTabBody({
   page,
   extraFields,
   onSignOut,
+  onBack,
 }: ProfileTabProps) {
   return (
     <ProfileSettings
@@ -220,6 +222,7 @@ export function ProfileTabBody({
       page={page}
       extraFields={extraFields}
       onSignOut={onSignOut}
+      onBack={onBack}
     />
   );
 }

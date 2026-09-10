@@ -153,7 +153,7 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   waveLayer: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   waveLeft: {
     position: 'absolute',

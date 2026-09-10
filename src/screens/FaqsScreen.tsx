@@ -12,6 +12,7 @@ import {clearBusinessCache} from '../api/business';
 import {fetchFaqs} from '../api/faqs';
 import {clearSession, getEnteredPortal, getSession} from '../api/session';
 import {AppHeader} from '../components/claimPortals/AppHeader';
+import {LoginStyleBackButton} from '../components/claimPortals/LoginStyleBackButton';
 import {PageBackdrop} from '../components/claimPortals/PageBackdrop';
 import {PageHero} from '../components/claimPortals/PageHero';
 import {SideDrawer} from '../components/claimPortals/SideDrawer';
@@ -89,6 +90,20 @@ const FaqsScreen = ({navigation}: FaqsScreenProps) => {
           styles.content,
           {paddingBottom: insets.bottom + 28},
         ]}>
+        <View style={styles.navRow}>
+          <LoginStyleBackButton
+            onPress={() => {
+              if (navigation.canGoBack()) {
+                navigation.goBack();
+                return;
+              }
+              if (user) {
+                navigation.navigate('ClaimPortals', {user});
+              }
+            }}
+            label="Back"
+          />
+        </View>
         <PageHero
           icon="faq"
           title="FAQs"
@@ -188,6 +203,9 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: 16,
     paddingTop: 16,
+  },
+  navRow: {
+    marginBottom: 12,
   },
   title: {
     fontSize: 20,

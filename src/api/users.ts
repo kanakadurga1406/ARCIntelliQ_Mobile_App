@@ -1,6 +1,7 @@
 import type {
   AppUser,
   CreateBusinessPayload,
+  ResetUserPasswordPayload,
   UserBusinessOption,
   UserFormValues,
   UserListQuery,
@@ -326,6 +327,18 @@ export function createBusinessFromExisting(
   return apiRequest<AppUser>('/users/create-business', {
     method: 'POST',
     body: JSON.stringify(payload),
+  });
+}
+
+export function resetUserPassword(
+  payload: ResetUserPasswordPayload,
+): Promise<void> {
+  return apiRequest(`/users/${payload.userId}/password`, {
+    method: 'PUT',
+    body: JSON.stringify({
+      password: payload.password,
+      confirmPassword: payload.confirmPassword,
+    }),
   });
 }
 
