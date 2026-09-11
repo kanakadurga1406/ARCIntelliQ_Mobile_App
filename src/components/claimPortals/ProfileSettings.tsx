@@ -17,6 +17,7 @@ import type {ClaimPortalTheme} from '../../theme/claimPortals';
 import {getAvatarColor, getInitials} from '../../theme/claimPortals';
 import {AppDialog, useAppDialog} from './AppDialog';
 import {ChevronRightIcon, LogoutMiniIcon, PencilMiniIcon} from './ClaimPortalsIcons';
+import {LoginStyleBackButton} from './LoginStyleBackButton';
 import {getToneColors, UiIcon} from './UiIcon';
 
 type ProfileSettingsProps = {
@@ -25,6 +26,7 @@ type ProfileSettingsProps = {
   page: ProfilePage;
   extraFields?: ProfileField[];
   onSignOut: () => void;
+  onBack?: () => void;
 };
 
 function formatRole(role: UserRole): string {
@@ -74,6 +76,7 @@ export function ProfileSettings({
   page,
   extraFields = [],
   onSignOut,
+  onBack,
 }: ProfileSettingsProps) {
   const [toggles, setToggles] = useState<Record<string, boolean>>({});
   const {dialog, showDialog, hideDialog} = useAppDialog();
@@ -133,6 +136,11 @@ export function ProfileSettings({
       style={styles.scroll}
       showsVerticalScrollIndicator={false}
       contentContainerStyle={styles.page}>
+      {onBack ? (
+        <View style={styles.navRow}>
+          <LoginStyleBackButton onPress={onBack} label="Back" />
+        </View>
+      ) : null}
       <View style={styles.identity}>
         <View
           style={[
@@ -453,6 +461,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 40,
+  },
+  navRow: {
+    marginBottom: 12,
   },
   identity: {
     alignItems: 'center',

@@ -2,6 +2,7 @@ import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {useFocusEffect} from '@react-navigation/native';
 import {
   ActivityIndicator,
+  BackHandler,
   FlatList,
   Pressable,
   RefreshControl,
@@ -167,6 +168,8 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
   const hasMoreRef = useRef(true);
   const portalsRef = useRef<ClaimPortal[]>([]);
   const enteringRef = useRef(false);
+  const previousTabRef = useRef('portals');
+  const profileOpenedFromStackRef = useRef(false);
 
   const showToast = useCallback((message: string) => {
     setToast(message);
@@ -280,6 +283,9 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
           ? 'portals'
           : route.params.initialTab;
       if (nextTab) {
+        if (nextTab === 'profile') {
+          profileOpenedFromStackRef.current = true;
+        }
         setActiveTab(nextTab);
         navigation.setParams({initialTab: undefined, openAddClaim: undefined});
       }
@@ -381,11 +387,49 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
     [navigation, showDialog, user],
   );
 
+  const openProfile = useCallback(() => {
+    if (activeTab !== 'profile') {
+      previousTabRef.current = activeTab;
+    }
+    profileOpenedFromStackRef.current = false;
+    setActiveTab('profile');
+  }, [activeTab]);
+
+  const closeProfile = useCallback(() => {
+    if (profileOpenedFromStackRef.current && navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+    const nextTab =
+      previousTabRef.current && previousTabRef.current !== 'profile'
+        ? previousTabRef.current
+        : 'portals';
+    setActiveTab(nextTab);
+  }, [navigation]);
+
+  useEffect(() => {
+    if (activeTab !== 'profile') {
+      return;
+    }
+    const subscription = BackHandler.addEventListener(
+      'hardwareBackPress',
+      () => {
+        closeProfile();
+        return true;
+      },
+    );
+    return () => subscription.remove();
+  }, [activeTab, closeProfile]);
+
   const handleDestination = useCallback(
     (destination: string) => {
       setDrawerOpen(false);
       if (destination === 'home' || destination === 'portals') {
         setActiveTab('portals');
+        return;
+      }
+      if (destination === 'profile') {
+        openProfile();
         return;
       }
       if (tabDestinations.has(destination)) {
@@ -415,6 +459,7 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
       openSearch,
       showToast,
       signOut,
+      openProfile,
       tabDestinations,
     ],
   );
@@ -581,7 +626,7 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
         topInset={insets.top}
         onMenuPress={() => setDrawerOpen(true)}
         onFaqsPress={() => navigation.navigate('Faqs')}
-        onProfilePress={() => setActiveTab('profile')}
+        onProfilePress={openProfile}
       />
 
       <View style={styles.body}>
@@ -609,6 +654,7 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
             page={profileFromUser(user)}
             extraFields={[]}
             onSignOut={requestSignOut}
+            onBack={closeProfile}
           />
           </FadeSlideIn>
         ) : null}
