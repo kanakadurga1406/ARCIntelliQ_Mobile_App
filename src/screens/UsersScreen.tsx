@@ -11,9 +11,8 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {fetchClaimPortalsDashboard} from '../api/business';
 import {sendResetPasswordLink} from '../api/resetPassword';
-import {clearSession} from '../api/session';
+import {clearSession, getEnteredPortal} from '../api/session';
 import {
   createBusinessFromExisting,
   deleteUser,
@@ -35,14 +34,12 @@ import {UserCard} from '../components/users/UserCard';
 import {UserDetailSheet} from '../components/users/UserDetailSheet';
 import {UserFilterSheet} from '../components/users/UserFilterSheet';
 import {getClaimPortalTheme} from '../theme/claimPortals';
-import type {NavItem} from '../types/claimPortals';
 import type {
   AppUser,
   UserFilters,
   UsersPageConfig,
 } from '../types/users';
 import type {UsersScreenProps} from '../types/navigation';
-import {portalMenuItems} from '../utils/hubMenu';
 import {formFromUser, mergeUniqueUsers} from '../utils/userList';
 
 const DEFAULT_FILTERS: UserFilters = {
@@ -93,9 +90,6 @@ const UsersScreen = ({navigation, route}: UsersScreenProps) => {
   const [filterOpen, setFilterOpen] = useState(false);
   const [createBusinessOpen, setCreateBusinessOpen] = useState(false);
   const [accessOpen, setAccessOpen] = useState(false);
-  const [menuItems, setMenuItems] = useState<NavItem[]>(() =>
-    portalMenuItems([]),
-  );
   const [selectedUser, setSelectedUser] = useState<AppUser | null>(null);
   const [detailUser, setDetailUser] = useState<AppUser | null>(null);
   const [accessUser, setAccessUser] = useState<AppUser | null>(null);
@@ -209,24 +203,6 @@ const UsersScreen = ({navigation, route}: UsersScreenProps) => {
     route.params.savedUserName,
     showToast,
   ]);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetchClaimPortalsDashboard()
-      .then(data => {
-        if (!cancelled) {
-          setMenuItems(portalMenuItems(data.menuItems));
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setMenuItems(portalMenuItems([]));
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const refresh = useCallback(async () => {
     setIsRefreshing(true);
@@ -684,7 +660,7 @@ const UsersScreen = ({navigation, route}: UsersScreenProps) => {
         theme={theme}
         user={user}
         portalName={portalName}
-        menuItems={menuItems}
+        menuItems={getEnteredPortal()?.menu ?? []}
         activeDestination="users"
         topInset={insets.top}
         bottomInset={insets.bottom}

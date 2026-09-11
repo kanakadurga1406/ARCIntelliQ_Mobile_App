@@ -13,6 +13,7 @@ export type EnteredPortal = {
   logoUrl: string;
   menu: NavItem[];
   firstFeature: NavItem | null;
+  portalCount?: number;
 };
 
 let currentSession: AuthSession | null = null;

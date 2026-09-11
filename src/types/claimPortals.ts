@@ -18,6 +18,7 @@ export type NavItem = {
   route?: string;
   badge?: number;
   style?: 'default' | 'fab';
+  children?: NavItem[];
 };
 
 export type PageAction = {

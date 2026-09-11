@@ -1,4 +1,4 @@
-import React, {useEffect, useRef, useState} from 'react';
+import React, {useEffect, useMemo, useRef, useState} from 'react';
 import {
   Animated,
   Pressable,
@@ -9,12 +9,13 @@ import {
   View,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
+import {canSwitchBusinesses} from '../../api/business';
 import type {ClaimHandlerUser} from '../../types/auth';
 import type {NavItem} from '../../types/claimPortals';
 import type {ClaimPortalTheme} from '../../theme/claimPortals';
 import {getInitials} from '../../theme/claimPortals';
 import {AppIcon} from './AppIcon';
-import {CloseIcon, LogoutMiniIcon} from './ClaimPortalsIcons';
+import {ChevronDownIcon, CloseIcon, LogoutMiniIcon} from './ClaimPortalsIcons';
 import {UiIcon} from './UiIcon';
 
 type SideDrawerProps = {
@@ -29,6 +30,152 @@ type SideDrawerProps = {
   onClose: () => void;
   onNavigate: (destination: string, label?: string) => void;
 };
+
+function hasChildren(item: NavItem): boolean {
+  return Boolean(item.children && item.children.length > 0);
+}
+
+function ancestorIdsForActive(
+  items: NavItem[],
+  activeDestination: string | null,
+): string[] {
+  if (!activeDestination) {
+    return [];
+  }
+
+  for (const item of items) {
+    if (!hasChildren(item)) {
+      continue;
+    }
+    const nested = ancestorIdsForActive(item.children || [], activeDestination);
+    const childHit = (item.children || []).some(
+      child => !hasChildren(child) && child.destination === activeDestination,
+    );
+    if (childHit || nested.length > 0) {
+      return [item.id, ...nested];
+    }
+  }
+
+  return [];
+}
+
+function DrawerMenuItem({
+  item,
+  depth,
+  theme,
+  activeDestination,
+  expanded,
+  onToggle,
+  onNavigate,
+}: {
+  item: NavItem;
+  depth: number;
+  theme: ClaimPortalTheme;
+  activeDestination: string | null;
+  expanded: Record<string, boolean>;
+  onToggle: (id: string) => void;
+  onNavigate: (destination: string, label?: string) => void;
+}) {
+  const branch = hasChildren(item);
+  const isOpen = Boolean(expanded[item.id]);
+  const isActive = !branch && Boolean(item.destination) && item.destination === activeDestination;
+  const rotate = useRef(new Animated.Value(isOpen ? 1 : 0)).current;
+
+  useEffect(() => {
+    Animated.timing(rotate, {
+      toValue: isOpen ? 1 : 0,
+      duration: 180,
+      useNativeDriver: true,
+    }).start();
+  }, [isOpen, rotate]);
+
+  const spin = rotate.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '180deg'],
+  });
+
+  const handlePress = () => {
+    if (branch) {
+      onToggle(item.id);
+      return;
+    }
+    if (!item.route && !item.destination) {
+      return;
+    }
+    onNavigate(item.destination, item.label);
+  };
+
+  const content = (
+    <>
+      <UiIcon name={item.icon} color="#FFFFFF" size={16} />
+      <Text style={styles.itemLabel} numberOfLines={2}>
+        {item.label}
+      </Text>
+      {typeof item.badge === 'number' ? (
+        <View style={styles.badge}>
+          <Text style={styles.badgeText}>{item.badge}</Text>
+        </View>
+      ) : null}
+      {branch ? (
+        <Animated.View style={{transform: [{rotate: spin}]}}>
+          <ChevronDownIcon color="#D5DDE8" size={12} />
+        </Animated.View>
+      ) : null}
+    </>
+  );
+
+  const rowStyle = [
+    styles.item,
+    {paddingLeft: 12 + depth * 14},
+  ];
+
+  return (
+    <View>
+      {isActive ? (
+        <LinearGradient
+          colors={['#2B74FF', '#1E5EFF']}
+          start={{x: 0, y: 0}}
+          end={{x: 1, y: 0}}
+          style={styles.activeItem}>
+          <Pressable
+            onPress={handlePress}
+            accessibilityRole="button"
+            accessibilityLabel={item.label}
+            accessibilityState={{expanded: branch ? isOpen : undefined}}
+            style={[styles.itemPress, {paddingLeft: 12 + depth * 14}]}>
+            {content}
+          </Pressable>
+        </LinearGradient>
+      ) : (
+        <Pressable
+          onPress={handlePress}
+          accessibilityRole="button"
+          accessibilityLabel={item.label}
+          accessibilityState={{expanded: branch ? isOpen : undefined}}
+          style={({pressed}) => [
+            rowStyle,
+            pressed && {backgroundColor: theme.drawerItem},
+          ]}>
+          {content}
+        </Pressable>
+      )}
+      {branch && isOpen
+        ? (item.children || []).map(child => (
+            <DrawerMenuItem
+              key={child.id}
+              item={child}
+              depth={depth + 1}
+              theme={theme}
+              activeDestination={activeDestination}
+              expanded={expanded}
+              onToggle={onToggle}
+              onNavigate={onNavigate}
+            />
+          ))
+        : null}
+    </View>
+  );
+}
 
 export function SideDrawer({
   visible,
@@ -46,10 +193,25 @@ export function SideDrawer({
   const drawerWidth = Math.min(Math.max(width * 0.82, 280), 360);
   const progress = useRef(new Animated.Value(0)).current;
   const [rendered, setRendered] = useState(visible);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const visibleItems = useMemo(
+    () => menuItems.filter(item => item.destination !== 'sign-out'),
+    [menuItems],
+  );
 
   useEffect(() => {
     if (visible) {
       setRendered(true);
+      const openIds = ancestorIdsForActive(visibleItems, activeDestination);
+      if (openIds.length > 0) {
+        setExpanded(current => {
+          const next = {...current};
+          openIds.forEach(id => {
+            next[id] = true;
+          });
+          return next;
+        });
+      }
     }
     Animated.timing(progress, {
       toValue: visible ? 1 : 0,
@@ -60,16 +222,41 @@ export function SideDrawer({
         setRendered(false);
       }
     });
-  }, [visible, progress]);
+  }, [visible, progress, visibleItems, activeDestination]);
 
   const translateX = progress.interpolate({
     inputRange: [0, 1],
     outputRange: [-drawerWidth, 0],
   });
 
+  const toggleExpanded = (id: string) => {
+    setExpanded(current => ({
+      ...current,
+      [id]: !current[id],
+    }));
+  };
+
   if (!rendered) {
     return null;
   }
+
+  const switchBusinesses = canSwitchBusinesses();
+  const headerIdentity = (
+    <>
+      <AppIcon size={42} />
+      <View style={styles.headerCopy}>
+        <Text style={styles.profileNameTop} numberOfLines={1}>
+          {user.name}
+        </Text>
+        {portalName ? (
+          <Text style={styles.portalName} numberOfLines={1}>
+            {portalName}
+          </Text>
+        ) : null}
+        <Text style={styles.appName}>ARCintelliQ</Text>
+      </View>
+    </>
+  );
 
   return (
     <View style={[styles.overlay, {width, height}]} pointerEvents="box-none">
@@ -98,18 +285,17 @@ export function SideDrawer({
           },
         ]}>
         <View style={styles.header}>
-          <AppIcon size={42} />
-          <View style={styles.headerCopy}>
-            <Text style={styles.profileNameTop} numberOfLines={1}>
-              {user.name}
-            </Text>
-            {portalName ? (
-              <Text style={styles.portalName} numberOfLines={1}>
-                {portalName}
-              </Text>
-            ) : null}
-            <Text style={styles.appName}>ARCintelliQ</Text>
-          </View>
+          {switchBusinesses ? (
+            <Pressable
+              onPress={() => onNavigate('portals')}
+              accessibilityRole="button"
+              accessibilityLabel="Switch business"
+              style={styles.headerPress}>
+              {headerIdentity}
+            </Pressable>
+          ) : (
+            <View style={styles.headerPress}>{headerIdentity}</View>
+          )}
           <Pressable
             onPress={onClose}
             accessibilityRole="button"
@@ -125,51 +311,18 @@ export function SideDrawer({
           contentContainerStyle={styles.menu}>
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>MENU</Text>
-            {menuItems.map((item, index) => {
-              const isActive = item.destination === activeDestination;
-              const content = (
-                <>
-                  <UiIcon name={item.icon} color="#FFFFFF" size={16} />
-                  <Text style={styles.itemLabel} numberOfLines={1}>
-                    {item.label}
-                  </Text>
-                  {typeof item.badge === 'number' ? (
-                    <View style={styles.badge}>
-                      <Text style={styles.badgeText}>{item.badge}</Text>
-                    </View>
-                  ) : null}
-                </>
-              );
-
-              if (isActive) {
-                return (
-                  <LinearGradient
-                    key={`${item.id}-${index}`}
-                    colors={['#2B74FF', '#1E5EFF']}
-                    start={{x: 0, y: 0}}
-                    end={{x: 1, y: 0}}
-                    style={styles.activeItem}>
-                    <Pressable
-                      onPress={() => onNavigate(item.destination, item.label)}
-                      style={styles.itemPress}>
-                      {content}
-                    </Pressable>
-                  </LinearGradient>
-                );
-              }
-
-              return (
-                <Pressable
-                  key={`${item.id}-${index}`}
-                  onPress={() => onNavigate(item.destination, item.label)}
-                  style={({pressed}) => [
-                    styles.item,
-                    pressed && {backgroundColor: theme.drawerItem},
-                  ]}>
-                  {content}
-                </Pressable>
-              );
-            })}
+            {visibleItems.map(item => (
+              <DrawerMenuItem
+                key={item.id}
+                item={item}
+                depth={0}
+                theme={theme}
+                activeDestination={activeDestination}
+                expanded={expanded}
+                onToggle={toggleExpanded}
+                onNavigate={onNavigate}
+              />
+            ))}
           </View>
         </ScrollView>
 
@@ -225,6 +378,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 18,
+  },
+  headerPress: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   headerCopy: {
     flex: 1,
