@@ -245,13 +245,8 @@ export function SideDrawer({
     <>
       <AppIcon size={42} />
       <View style={styles.headerCopy}>
-        <Text style={styles.profileNameTop} numberOfLines={1}>
-          {user.name}
-        </Text>
         {portalName ? (
-          <Text style={styles.portalName} numberOfLines={1}>
-            {portalName}
-          </Text>
+          <Text style={styles.portalName}>{portalName}</Text>
         ) : null}
         <Text style={styles.appName}>ARCintelliQ</Text>
       </View>
@@ -381,29 +376,30 @@ const styles = StyleSheet.create({
   },
   headerPress: {
     flex: 1,
+    minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
+    paddingRight: 8,
   },
   headerCopy: {
     flex: 1,
-    marginLeft: 10,
-  },
-  profileNameTop: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '800',
+    minWidth: 0,
+    marginLeft: 12,
+    justifyContent: 'center',
   },
   portalName: {
-    marginTop: 2,
-    color: '#D5DDE8',
-    fontSize: 13,
-    fontWeight: '600',
+    color: '#FFFFFF',
+    fontSize: 18,
+    lineHeight: 24,
+    fontWeight: '800',
+    letterSpacing: 0.2,
   },
   appName: {
-    marginTop: 2,
-    color: '#9AA8BB',
-    fontSize: 12,
-    fontWeight: '700',
+    marginTop: 3,
+    color: '#FFFFFF',
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '600',
   },
   closeButton: {
     width: 32,
