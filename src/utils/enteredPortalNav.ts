@@ -27,13 +27,21 @@ export function isMobileMenuRoute(route?: string): boolean {
 }
 
 export function firstMenuFeature(items: NavItem[]): NavItem | null {
-  return (
-    items.find(
-      item =>
-        item.destination !== 'sign-out' &&
-        isMobileMenuRoute(item.route || item.destination),
-    ) ?? null
-  );
+  for (const item of items) {
+    if (item.children && item.children.length > 0) {
+      const nested = firstMenuFeature(item.children);
+      if (nested) {
+        return nested;
+      }
+    }
+    if (
+      item.destination !== 'sign-out' &&
+      isMobileMenuRoute(item.route || item.destination)
+    ) {
+      return item;
+    }
+  }
+  return null;
 }
 
 export function enteredWorkspaceRoute(

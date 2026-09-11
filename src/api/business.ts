@@ -17,11 +17,12 @@ import {
 } from '../utils/portalList';
 import {ApiError, apiRequest} from './client';
 import {
+  getEnteredPortal,
   getSession,
   setEnteredPortal,
   type EnteredPortal,
 } from './session';
-import {isMobileMenuRoute} from '../utils/enteredPortalNav';
+import {firstMenuFeature} from '../utils/enteredPortalNav';
 
 export type PostLoginDestination =
   | {kind: 'portals'}
@@ -123,7 +124,62 @@ function readStatus(row: Record<string, unknown>): string {
 
 function menuIcon(icon: string, name: string): string {
   const raw = `${icon} ${name}`.toLowerCase();
-  if (raw.includes('intake') || raw.includes('list')) {
+  if (raw.includes('user') || raw.includes('role')) {
+    return 'users';
+  }
+  if (raw.includes('faq') || raw.includes('question')) {
+    return 'document';
+  }
+  if (raw.includes('dashboard') || raw.includes('gauge')) {
+    return 'dashboard';
+  }
+  if (raw.includes('bell') || raw.includes('notif')) {
+    return 'bell';
+  }
+  if (
+    raw.includes('dollar') ||
+    raw.includes('money') ||
+    raw.includes('credit') ||
+    raw.includes('financial') ||
+    raw.includes('ledger') ||
+    raw.includes('payment')
+  ) {
+    return 'dollar';
+  }
+  if (raw.includes('sparkle') || raw.includes('advanced')) {
+    return 'sparkle';
+  }
+  if (raw.includes('tool') || raw.includes('setting')) {
+    return 'layers';
+  }
+  if (raw.includes('folder')) {
+    return 'folder';
+  }
+  if (raw.includes('envelope') || raw.includes('mail')) {
+    return 'mail';
+  }
+  if (raw.includes('lock') || raw.includes('otp') || raw.includes('otp')) {
+    return 'lock';
+  }
+  if (raw.includes('calendar')) {
+    return 'calendar';
+  }
+  if (raw.includes('shield')) {
+    return 'shield';
+  }
+  if (raw.includes('building') || raw.includes('contractor')) {
+    return 'building';
+  }
+  if (raw.includes('clock') || raw.includes('hourglass') || raw.includes('aging')) {
+    return 'clock';
+  }
+  if (raw.includes('search')) {
+    return 'search';
+  }
+  if (raw.includes('home')) {
+    return 'home';
+  }
+  if (raw.includes('intake') || raw.includes('list-alt') || raw.includes('file') || raw.includes('report') || raw.includes('clipboard') || raw.includes('history')) {
     return 'document';
   }
   if (raw.includes('claim') || raw.includes('briefcase')) {
@@ -148,66 +204,35 @@ function menuDestination(route: string, name: string): string {
 }
 
 function toNavItem(row: Record<string, unknown>): NavItem | null {
-  const route = readString(row.route);
   const label = readString(row.name, row.label);
-  const id = readString(route, label, row.id);
+  const route = readString(row.route);
+  const id = readString(row.id, route, label);
   if (!id || !label) {
     return null;
   }
+
+  const children = toNavTree(row.children);
   return {
     id,
     label,
     icon: menuIcon(readString(row.icon), label),
-    destination: menuDestination(route, label),
+    destination: route ? menuDestination(route, label) : '',
     route: route || undefined,
+    children: children.length > 0 ? children : undefined,
   };
 }
 
-function firstFeatureFromMenu(value: unknown): NavItem | null {
-  if (!Array.isArray(value)) {
-    return null;
-  }
-
-  for (const node of value) {
-    const row = asRecord(node);
-    if (!row) {
-      continue;
-    }
-    const item = toNavItem(row);
-    if (item?.route && isMobileMenuRoute(item.route)) {
-      return item;
-    }
-    const nested = firstFeatureFromMenu(row.children);
-    if (nested) {
-      return nested;
-    }
-  }
-
-  return null;
-}
-
-function flattenMenu(value: unknown): NavItem[] {
+function toNavTree(value: unknown): NavItem[] {
   if (!Array.isArray(value)) {
     return [];
   }
 
-  const items: NavItem[] = [];
-  value.forEach(node => {
-    const row = asRecord(node);
-    if (!row) {
-      return;
-    }
-    const children = flattenMenu(row.children);
-    if (children.length > 0) {
-      items.push(...children);
-      return;
-    }
-    const item = toNavItem(row);
-    if (item) {
-      items.push(item);
-    }
-  });
-  return uniqueById(items);
+  return value
+    .map(node => {
+      const row = asRecord(node);
+      return row ? toNavItem(row) : null;
+    })
+    .filter((item): item is NavItem => Boolean(item));
 }
 
 export function parseEnteredPortal(payload: unknown): EnteredPortal | null {
@@ -236,8 +261,16 @@ export function parseEnteredPortal(payload: unknown): EnteredPortal | null {
   const rawMenu = Array.isArray(nested.left_menu)
     ? nested.left_menu
     : context?.menu;
-  const menu = flattenMenu(rawMenu);
-  const firstFeature = firstFeatureFromMenu(rawMenu);
+  const menu = toNavTree(rawMenu);
+  const firstFeature = firstMenuFeature(menu);
+  const landing = asRecord(nested.landing);
+  const portalCount =
+    Number(
+      landing?.portal_count ??
+        landing?.portalCount ??
+        nested.portal_count ??
+        0,
+    ) || 0;
 
   return {
     businessId,
@@ -247,10 +280,8 @@ export function parseEnteredPortal(payload: unknown): EnteredPortal | null {
       business?.business_logo_url,
     ),
     firstFeature,
-    menu: [
-      ...menu,
-      {id: 'sign-out', label: 'Sign out', icon: 'logout', destination: 'sign-out'},
-    ],
+    menu,
+    portalCount,
   };
 }
 
@@ -328,6 +359,17 @@ export function cacheBusinesses(items: ClaimPortal[]): void {
 
 export function getCachedBusinesses(): ClaimPortal[] | null {
   return cachedBusinesses;
+}
+
+export function getAvailableBusinessCount(): number {
+  const cached = getCachedBusinesses()?.length ?? 0;
+  const landing = getSession()?.landing.portalCount ?? 0;
+  const entered = getEnteredPortal()?.portalCount ?? 0;
+  return Math.max(cached, landing, entered);
+}
+
+export function canSwitchBusinesses(): boolean {
+  return getAvailableBusinessCount() > 1;
 }
 
 export function clearBusinessCache(): void {

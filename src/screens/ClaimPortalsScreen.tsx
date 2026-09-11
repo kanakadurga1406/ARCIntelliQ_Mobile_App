@@ -424,7 +424,7 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
   const handleDestination = useCallback(
     (destination: string) => {
       setDrawerOpen(false);
-      if (destination === 'home') {
+      if (destination === 'home' || destination === 'portals') {
         setActiveTab('portals');
         return;
       }
