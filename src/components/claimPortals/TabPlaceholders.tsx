@@ -203,6 +203,7 @@ type ProfileTabProps = {
   user: ClaimHandlerUser;
   page: ProfilePage;
   extraFields: ProfileField[];
+  portalName?: string;
   onSignOut: () => void;
   onBack?: () => void;
 };
@@ -212,6 +213,7 @@ export function ProfileTabBody({
   user,
   page,
   extraFields,
+  portalName,
   onSignOut,
   onBack,
 }: ProfileTabProps) {
@@ -221,6 +223,7 @@ export function ProfileTabBody({
       user={user}
       page={page}
       extraFields={extraFields}
+      portalName={portalName}
       onSignOut={onSignOut}
       onBack={onBack}
     />

@@ -1,137 +1,53 @@
-import React, {useMemo, useState} from 'react';
+import React from 'react';
 import {
   Pressable,
   ScrollView,
-  Share,
   StyleSheet,
-  Switch,
   Text,
   View,
-  type StyleProp,
-  type ViewStyle,
 } from 'react-native';
-import type {ClaimHandlerUser, UserRole} from '../../types/auth';
+import LinearGradient from 'react-native-linear-gradient';
+import type {ClaimHandlerUser} from '../../types/auth';
 import type {ProfileField} from '../../types/claimPortals';
-import type {ProfilePage, ProfileRow, ProfileValueFrom} from '../../types/profile';
+import type {ProfilePage} from '../../types/profile';
 import type {ClaimPortalTheme} from '../../theme/claimPortals';
 import {getAvatarColor, getInitials} from '../../theme/claimPortals';
-import {AppDialog, useAppDialog} from './AppDialog';
-import {ChevronRightIcon, LogoutMiniIcon, PencilMiniIcon} from './ClaimPortalsIcons';
+import {shadows} from '../../theme/visual';
+import {LogoutMiniIcon} from './ClaimPortalsIcons';
 import {LoginStyleBackButton} from './LoginStyleBackButton';
-import {getToneColors, UiIcon} from './UiIcon';
+import {UiIcon} from './UiIcon';
 
 type ProfileSettingsProps = {
   theme: ClaimPortalTheme;
   user: ClaimHandlerUser;
   page: ProfilePage;
   extraFields?: ProfileField[];
+  portalName?: string;
   onSignOut: () => void;
   onBack?: () => void;
 };
 
-function formatRole(role: UserRole): string {
-  if (role === 'claim-handler') {
-    return 'Claim Handler';
-  }
-  if (role === 'claimant') {
-    return 'Claimant';
-  }
-  return 'Contractor';
-}
-
-function resolveValue(
-  from: ProfileValueFrom | undefined,
-  fallback: string | undefined,
-  user: ClaimHandlerUser,
-  fields: ProfileField[],
-): string | undefined {
-  if (!from) {
-    return fallback;
-  }
-  if (from === 'user.email') {
-    return user.email;
-  }
-  if (from === 'user.name') {
-    return user.name;
-  }
-  if (from === 'user.title') {
-    return user.title;
-  }
-  if (from === 'user.id') {
-    return user.id.toUpperCase();
-  }
-  if (from === 'user.role') {
-    return formatRole(user.role);
-  }
-  if (from.startsWith('field:')) {
-    const id = from.slice(6);
-    return fields.find(field => field.id === id)?.value ?? fallback;
-  }
-  return fallback;
+function sameLabel(left: string, right: string): boolean {
+  return (
+    left.replace(/\s+/g, '').toLowerCase() ===
+    right.replace(/\s+/g, '').toLowerCase()
+  );
 }
 
 export function ProfileSettings({
   theme,
   user,
-  page,
-  extraFields = [],
+  portalName,
   onSignOut,
   onBack,
 }: ProfileSettingsProps) {
-  const [toggles, setToggles] = useState<Record<string, boolean>>({});
-  const {dialog, showDialog, hideDialog} = useAppDialog();
-  const fields = extraFields.length > 0 ? extraFields : page.fields;
-  const referencedFieldIds = useMemo(() => {
-    const ids = new Set<string>();
-    page.sections.forEach(section => {
-      section.rows.forEach(row => {
-        if (row.valueFrom?.startsWith('field:')) {
-          ids.add(row.valueFrom.slice(6));
-        }
-      });
-    });
-    return ids;
-  }, [page.sections]);
-  const leftoverFields = (fields ?? []).filter(
-    field => !referencedFieldIds.has(field.id),
-  );
-
-  const shareEmail = async () => {
-    try {
-      await Share.share({
-        title: 'Handler email',
-        message: user.email,
-      });
-    } catch {
-      showDialog({title: 'Email', message: user.email});
-    }
-  };
-
-  const handleRow = (row: ProfileRow) => {
-    const destination = row.destination;
-    if (destination === 'sign-out') {
-      onSignOut();
-      return;
-    }
-    if (destination === 'toggle-alerts') {
-      setToggles(current => ({
-        ...current,
-        [row.id]: !(current[row.id] ?? row.defaultOn ?? false),
-      }));
-      return;
-    }
-    if (destination === 'share-email') {
-      shareEmail();
-      return;
-    }
-    showDialog({
-      title: row.label,
-      message: row.message || 'This option will connect when the live API is ready.',
-    });
-  };
+  const displayName = user.name.trim() || user.title.trim() || 'Account';
+  const roleLabel = user.title.trim();
+  const showRole = Boolean(roleLabel && !sameLabel(displayName, roleLabel));
+  const enteredPortalName = portalName?.trim() || '';
+  const showPortal = Boolean(enteredPortalName);
 
   return (
-    <>
     <ScrollView
       style={styles.scroll}
       showsVerticalScrollIndicator={false}
@@ -141,314 +57,132 @@ export function ProfileSettings({
           <LoginStyleBackButton onPress={onBack} label="Back" />
         </View>
       ) : null}
-      <View style={styles.identity}>
+
+      <View
+        style={[
+          styles.hero,
+          {
+            backgroundColor: theme.card,
+            borderColor: theme.border,
+            shadowColor: theme.shadow,
+          },
+        ]}>
+        <LinearGradient
+          colors={['rgba(43,116,255,0.12)', 'rgba(43,116,255,0)']}
+          start={{x: 0.5, y: 0}}
+          end={{x: 0.5, y: 1}}
+          style={styles.heroGlow}
+        />
         <View
           style={[
             styles.avatarRing,
-            {borderColor: '#D7E4F7'},
+            {borderColor: `${getAvatarColor(displayName)}33`},
           ]}>
           <View
             style={[
               styles.avatar,
-              {backgroundColor: getAvatarColor(user.name)},
+              {backgroundColor: getAvatarColor(displayName)},
             ]}>
-            <Text style={styles.avatarText}>{getInitials(user.name)}</Text>
+            <Text style={styles.avatarText}>{getInitials(displayName)}</Text>
           </View>
         </View>
-        <Text style={[styles.name, {color: theme.text}]} numberOfLines={1}>
-          {user.name}
-        </Text>
-        <Text
-          style={[styles.jobTitle, {color: theme.textSecondary}]}
-          numberOfLines={2}>
-          {user.title}
-        </Text>
-        <View style={styles.pills}>
-          {page.badges.map(badge => {
-            const tone = getToneColors(theme, badge.tone);
-            return (
-              <View
-                key={badge.id}
-                style={[
-                  styles.pill,
-                  {backgroundColor: tone.bg, borderColor: theme.border},
-                ]}>
-                {badge.tone === 'success' ? (
-                  <View style={[styles.statusDot, {backgroundColor: tone.fg}]} />
-                ) : null}
-                <Text style={[styles.pillText, {color: tone.fg}]}>
-                  {badge.id === 'role' ? formatRole(user.role) : badge.label}
-                </Text>
-              </View>
-            );
-          })}
-        </View>
-        <Pressable
-          onPress={() =>
-            showDialog({
-              title: page.editTitle,
-              message: page.editMessage,
-            })
-          }
-          accessibilityRole="button"
-          accessibilityLabel="Edit profile"
-          style={({pressed}) => [
-            styles.editButton,
-            {
-              backgroundColor: theme.card,
-              borderColor: theme.border,
-            },
-            pressed && {opacity: 0.82},
-          ]}>
-          <PencilMiniIcon color={theme.text} size={13} />
-          <Text style={[styles.editText, {color: theme.text}]}>
-            {page.editLabel}
-          </Text>
-        </Pressable>
+        <Text style={[styles.name, {color: theme.text}]}>{displayName}</Text>
+        {showRole ? (
+          <View
+            style={[
+              styles.roleChip,
+              {backgroundColor: theme.chip, borderColor: theme.border},
+            ]}>
+            <Text style={[styles.roleChipText, {color: theme.primary}]}>
+              {roleLabel}
+            </Text>
+          </View>
+        ) : null}
       </View>
 
-      {page.sections.map(section => (
-        <View key={section.id}>
-          {section.title ? (
-            <SectionLabel theme={theme} label={section.title} />
-          ) : null}
-          <Group
-            theme={theme}
-            style={!section.title ? styles.signOutGroup : undefined}>
-            {section.rows.map((row, index) => {
-              if (row.destination === 'toggle-theme') {
-                return null;
-              }
-              const last = index === section.rows.length - 1;
-              const tone = getToneColors(theme, row.tone);
-              const value = resolveValue(row.valueFrom, row.value, user, fields);
-              if (row.kind === 'sign-out') {
-                return (
-                  <Pressable
-                    key={row.id}
-                    onPress={() => handleRow(row)}
-                    accessibilityRole="button"
-                    accessibilityLabel={row.label}
-                    style={({pressed}) => [
-                      styles.signOutRow,
-                      pressed && {backgroundColor: theme.dangerSoft},
-                    ]}>
-                    <LogoutMiniIcon color={theme.danger} size={16} />
-                    <Text style={[styles.signOutText, {color: theme.danger}]}>
-                      {row.label}
-                    </Text>
-                  </Pressable>
-                );
-              }
-              if (row.kind === 'toggle') {
-                const on = toggles[row.id] ?? row.defaultOn ?? false;
-                return (
-                  <SwitchRow
-                    key={row.id}
-                    theme={theme}
-                    icon={<UiIcon name={row.icon} color={tone.fg} size={15} />}
-                    iconBg={tone.bg}
-                    label={row.label}
-                    hint={row.hint || ''}
-                    value={on}
-                    last={last}
-                    onValueChange={() => handleRow(row)}
-                  />
-                );
-              }
-              return (
-                <SettingsRow
-                  key={row.id}
-                  theme={theme}
-                  icon={<UiIcon name={row.icon} color={tone.fg} size={15} />}
-                  iconBg={tone.bg}
-                  label={row.label}
-                  value={value}
-                  last={last}
-                  onPress={
-                    row.kind === 'action' ? () => handleRow(row) : undefined
-                  }
-                />
-              );
-            })}
-          </Group>
-        </View>
-      ))}
+      <Text style={[styles.section, {color: theme.textMuted}]}>Account</Text>
+      <View
+        style={[
+          styles.card,
+          {
+            backgroundColor: theme.card,
+            borderColor: theme.border,
+            shadowColor: theme.shadow,
+          },
+        ]}>
+        {showPortal ? (
+          <>
+            <AccountRow
+              theme={theme}
+              icon="building"
+              label="Portal"
+              value={enteredPortalName}
+            />
+            <View style={[styles.divider, {backgroundColor: theme.border}]} />
+          </>
+        ) : null}
+        <AccountRow
+          theme={theme}
+          icon="mail"
+          label="Email"
+          value={user.email || '—'}
+          last
+        />
+      </View>
 
-      {leftoverFields.length > 0 ? (
-        <>
-          <SectionLabel theme={theme} label="More details" />
-          <Group theme={theme}>
-            {leftoverFields.map((field, index) => (
-              <SettingsRow
-                key={field.id}
-                theme={theme}
-                icon={<UiIcon name="globe" color={theme.success} size={15} />}
-                iconBg={theme.successSoft}
-                label={field.label || 'Detail'}
-                value={field.value}
-                last={index === leftoverFields.length - 1}
-              />
-            ))}
-          </Group>
-        </>
-      ) : null}
-
-      <Text style={[styles.footer, {color: theme.textMuted}]}>
-        {page.footerLines.join('\n')}
-      </Text>
+      <Pressable
+        onPress={onSignOut}
+        accessibilityRole="button"
+        accessibilityLabel="Sign out"
+        style={({pressed}) => [
+          styles.signOut,
+          {
+            backgroundColor: theme.dangerSoft,
+            borderColor: theme.dangerSoft,
+          },
+          pressed && {opacity: 0.86},
+        ]}>
+        <LogoutMiniIcon color={theme.danger} size={16} />
+        <Text style={[styles.signOutText, {color: theme.danger}]}>
+          Sign out
+        </Text>
+      </Pressable>
     </ScrollView>
-    <AppDialog
-      visible={dialog.visible}
-      theme={theme}
-      title={dialog.title}
-      message={dialog.message}
-      buttons={dialog.buttons}
-      onClose={hideDialog}
-    />
-    </>
   );
 }
 
-function SectionLabel({
-  theme,
-  label,
-}: {
-  theme: ClaimPortalTheme;
-  label: string;
-}) {
-  return (
-    <Text style={[styles.section, {color: theme.textMuted}]}>{label}</Text>
-  );
-}
-
-function Group({
-  theme,
-  children,
-  style,
-}: {
-  theme: ClaimPortalTheme;
-  children: React.ReactNode;
-  style?: StyleProp<ViewStyle>;
-}) {
-  return (
-    <View
-      style={[
-        styles.group,
-        {backgroundColor: theme.card, borderColor: theme.border},
-        style,
-      ]}>
-      {children}
-    </View>
-  );
-}
-
-function SettingsRow({
+function AccountRow({
   theme,
   icon,
-  iconBg,
   label,
   value,
+  muted,
   last,
-  onPress,
 }: {
   theme: ClaimPortalTheme;
-  icon: React.ReactNode;
-  iconBg: string;
+  icon: string;
   label: string;
-  value?: string;
+  value: string;
+  muted?: boolean;
   last?: boolean;
-  onPress?: () => void;
 }) {
-  const content = (
-    <>
-      <View style={[styles.iconWrap, {backgroundColor: iconBg}]}>{icon}</View>
-      <Text style={[styles.rowLabel, {color: theme.text}]} numberOfLines={1}>
-        {label}
-      </Text>
-      {value ? (
+  return (
+    <View style={[styles.accountRow, last && styles.accountRowLast]}>
+      <View style={[styles.iconWrap, {backgroundColor: theme.chip}]}>
+        <UiIcon name={icon} color={theme.primary} size={16} />
+      </View>
+      <View style={styles.accountCopy}>
+        <Text style={[styles.accountLabel, {color: theme.textMuted}]}>
+          {label}
+        </Text>
         <Text
-          style={[styles.rowValue, {color: theme.textSecondary}]}
-          numberOfLines={1}>
+          style={[
+            styles.accountValue,
+            {color: muted ? theme.textMuted : theme.text},
+          ]}>
           {value}
         </Text>
-      ) : null}
-      {onPress ? (
-        <ChevronRightIcon color={theme.textMuted} size={8} />
-      ) : (
-        <View style={styles.chevronSpacer} />
-      )}
-    </>
-  );
-
-  if (onPress) {
-    return (
-      <Pressable
-        onPress={onPress}
-        accessibilityRole="button"
-        accessibilityLabel={value ? `${label}, ${value}` : label}
-        style={({pressed}) => [
-          styles.row,
-          last && styles.rowLast,
-          {borderBottomColor: theme.border},
-          pressed && {backgroundColor: theme.cardMuted},
-        ]}>
-        {content}
-      </Pressable>
-    );
-  }
-
-  return (
-    <View
-      style={[
-        styles.row,
-        last && styles.rowLast,
-        {borderBottomColor: theme.border},
-      ]}>
-      {content}
-    </View>
-  );
-}
-
-function SwitchRow({
-  theme,
-  icon,
-  iconBg,
-  label,
-  hint,
-  value,
-  last,
-  onValueChange,
-}: {
-  theme: ClaimPortalTheme;
-  icon: React.ReactNode;
-  iconBg: string;
-  label: string;
-  hint: string;
-  value: boolean;
-  last?: boolean;
-  onValueChange: (next: boolean) => void;
-}) {
-  return (
-    <View
-      style={[
-        styles.row,
-        last && styles.rowLast,
-        {borderBottomColor: theme.border},
-      ]}>
-      <View style={[styles.iconWrap, {backgroundColor: iconBg}]}>{icon}</View>
-      <View style={styles.switchCopy}>
-        <Text style={[styles.rowLabel, {color: theme.text}]}>{label}</Text>
-        <Text style={[styles.rowHint, {color: theme.textMuted}]}>{hint}</Text>
       </View>
-      <Switch
-        value={value}
-        onValueChange={onValueChange}
-        thumbColor="#FFFFFF"
-        trackColor={{false: theme.border, true: theme.primary}}
-        ios_backgroundColor={theme.border}
-        accessibilityLabel={label}
-      />
     </View>
   );
 }
@@ -459,149 +193,125 @@ const styles = StyleSheet.create({
   },
   page: {
     paddingHorizontal: 16,
-    paddingTop: 16,
+    paddingTop: 8,
     paddingBottom: 40,
   },
   navRow: {
     marginBottom: 12,
   },
-  identity: {
+  hero: {
     alignItems: 'center',
-    paddingTop: 8,
-    paddingBottom: 6,
+    borderRadius: 24,
+    borderWidth: 1,
+    paddingHorizontal: 20,
+    paddingTop: 28,
+    paddingBottom: 24,
+    overflow: 'hidden',
+    ...shadows.card,
+  },
+  heroGlow: {
+    ...StyleSheet.absoluteFillObject,
   },
   avatarRing: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
+    width: 96,
+    height: 96,
+    borderRadius: 48,
     borderWidth: 3,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
   },
   avatar: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
+    width: 84,
+    height: 84,
+    borderRadius: 42,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarText: {
     color: '#FFFFFF',
-    fontSize: 26,
+    fontSize: 28,
     fontWeight: '800',
   },
   name: {
-    marginTop: 14,
-    fontSize: 18,
-    lineHeight: 22,
-    fontWeight: '700',
+    marginTop: 16,
+    fontSize: 22,
+    lineHeight: 28,
+    fontWeight: '800',
     textAlign: 'center',
+    paddingHorizontal: 8,
   },
-  jobTitle: {
-    marginTop: 4,
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: '600',
-    textAlign: 'center',
-    paddingHorizontal: 24,
-  },
-  pills: {
-    marginTop: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  pill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    minHeight: 26,
-    paddingHorizontal: 10,
-    borderRadius: 999,
-    borderWidth: 1,
-  },
-  statusDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-  },
-  pillText: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  editButton: {
-    marginTop: 14,
-    minHeight: 36,
-    paddingHorizontal: 14,
-    borderRadius: 999,
-    borderWidth: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  editText: {
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  section: {
-    marginTop: 22,
-    marginBottom: 8,
-    marginLeft: 12,
-    fontSize: 13,
-    fontWeight: '600',
-    letterSpacing: 0.2,
-  },
-  group: {
-    borderRadius: 16,
-    borderWidth: 1,
-    overflow: 'hidden',
-  },
-  row: {
-    minHeight: 52,
+  roleChip: {
+    marginTop: 10,
+    minHeight: 28,
     paddingHorizontal: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  rowLast: {
-    borderBottomWidth: 0,
-  },
-  iconWrap: {
-    width: 30,
-    height: 30,
-    borderRadius: 8,
+    borderRadius: 999,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  rowLabel: {
-    flexShrink: 0,
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  rowValue: {
-    flex: 1,
-    fontSize: 15,
-    fontWeight: '500',
-    textAlign: 'right',
-  },
-  switchCopy: {
-    flex: 1,
-    paddingRight: 8,
-  },
-  rowHint: {
-    marginTop: 2,
+  roleChipText: {
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: '700',
+    letterSpacing: 0.2,
   },
-  chevronSpacer: {
-    width: 8,
+  section: {
+    marginTop: 24,
+    marginBottom: 8,
+    marginLeft: 4,
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
   },
-  signOutGroup: {
-    marginTop: 22,
+  card: {
+    borderRadius: 20,
+    borderWidth: 1,
+    overflow: 'hidden',
+    ...shadows.card,
   },
-  signOutRow: {
+  accountRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    gap: 12,
+  },
+  accountRowLast: {
+    paddingBottom: 16,
+  },
+  divider: {
+    height: StyleSheet.hairlineWidth,
+    marginLeft: 64,
+  },
+  iconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  accountCopy: {
+    flex: 1,
+    minWidth: 0,
+    paddingTop: 1,
+  },
+  accountLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 0.2,
+    marginBottom: 4,
+  },
+  accountValue: {
+    fontSize: 16,
+    lineHeight: 22,
+    fontWeight: '700',
+  },
+  signOut: {
+    marginTop: 28,
     minHeight: 52,
+    borderRadius: 16,
+    borderWidth: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -609,13 +319,6 @@ const styles = StyleSheet.create({
   },
   signOutText: {
     fontSize: 16,
-    fontWeight: '600',
-  },
-  footer: {
-    marginTop: 20,
-    textAlign: 'center',
-    fontSize: 12,
-    lineHeight: 18,
-    fontWeight: '500',
+    fontWeight: '700',
   },
 });

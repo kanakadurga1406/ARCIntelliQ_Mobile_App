@@ -20,7 +20,7 @@ import {
   PORTAL_PAGE_SIZE,
   profileFromUser,
 } from '../api/business';
-import {clearSession} from '../api/session';
+import {clearSession, getEnteredPortal} from '../api/session';
 import {openEnteredWorkspace} from '../utils/enteredPortalNav';
 import {AppDialog, useAppDialog} from '../components/claimPortals/AppDialog';
 import {AppHeader} from '../components/claimPortals/AppHeader';
@@ -170,6 +170,7 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
   const enteringRef = useRef(false);
   const previousTabRef = useRef('portals');
   const profileOpenedFromStackRef = useRef(false);
+  const [profileFromBusiness, setProfileFromBusiness] = useState(false);
 
   const showToast = useCallback((message: string) => {
     setToast(message);
@@ -285,6 +286,7 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
       if (nextTab) {
         if (nextTab === 'profile') {
           profileOpenedFromStackRef.current = true;
+          setProfileFromBusiness(true);
         }
         setActiveTab(nextTab);
         navigation.setParams({initialTab: undefined, openAddClaim: undefined});
@@ -392,6 +394,7 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
       previousTabRef.current = activeTab;
     }
     profileOpenedFromStackRef.current = false;
+    setProfileFromBusiness(false);
     setActiveTab('profile');
   }, [activeTab]);
 
@@ -653,6 +656,11 @@ const ClaimPortalsScreen = ({navigation, route}: ClaimPortalsScreenProps) => {
             user={user}
             page={profileFromUser(user)}
             extraFields={[]}
+            portalName={
+              profileFromBusiness
+                ? getEnteredPortal()?.businessName?.trim() || ''
+                : ''
+            }
             onSignOut={requestSignOut}
             onBack={closeProfile}
           />

@@ -455,52 +455,26 @@ export function profileFromUser(user: ClaimHandlerUser): ProfilePage {
     editTitle: '',
     editMessage: '',
     footerLines: [],
-    badges: [
-      {id: 'title', label: user.title || 'Claim Handler', tone: 'primary'},
-    ],
-    fields: [
-      {id: 'id', label: 'User ID', value: user.id},
-      {id: 'email', label: 'Email', value: user.email},
-    ],
+    badges: [],
+    fields: [],
     sections: [
       {
         id: 'account',
         title: 'Account',
         rows: [
           {
-            id: 'name',
-            label: 'Name',
-            valueFrom: 'user.name',
-            icon: 'profile',
+            id: 'portal',
+            label: 'Portal',
+            icon: 'building',
             kind: 'info',
           },
           {
             id: 'email',
             label: 'Email',
+            value: user.email,
             valueFrom: 'user.email',
             icon: 'mail',
             kind: 'info',
-          },
-          {
-            id: 'title',
-            label: 'Title',
-            valueFrom: 'user.title',
-            icon: 'shield',
-            kind: 'info',
-          },
-          {
-            id: 'id',
-            label: 'User ID',
-            valueFrom: 'user.id',
-            icon: 'users',
-            kind: 'info',
-          },
-          {
-            id: 'sign-out',
-            label: 'Sign out',
-            icon: 'logout',
-            kind: 'sign-out',
-            destination: 'sign-out',
           },
         ],
       },
